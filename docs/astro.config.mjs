@@ -10,7 +10,7 @@ export default defineConfig({
       logo: {
         light: './public/logo-light.svg',
         dark: './public/logo-dark.svg',
-        replacesTitle: false,
+        replacesTitle: true,
       },
       social: {
         github: 'https://github.com/7loro/girok-md',
