@@ -1,0 +1,183 @@
+---
+title: Deployment
+description: Deploy your girok-md blog to GitHub Pages or other platforms
+---
+
+import { Steps, Tabs, TabItem, FileTree } from '@astrojs/starlight/components';
+
+# Deployment
+
+girok-md can be deployed to GitHub Pages, Vercel, Netlify, or any static hosting platform.
+
+## GitHub Pages (Recommended)
+
+<Steps>
+
+1. **Create the workflow file**
+
+   Create `.github/workflows/deploy.yml`:
+
+   ```yaml title=".github/workflows/deploy.yml"
+   name: Deploy to GitHub Pages
+
+   on:
+     push:
+       branches: [main]
+     workflow_dispatch:
+
+   permissions:
+     contents: read
+     pages: write
+     id-token: write
+
+   concurrency:
+     group: pages
+     cancel-in-progress: false
+
+   jobs:
+     build:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout
+           uses: actions/checkout@v4
+
+         - name: Setup Node
+           uses: actions/setup-node@v4
+           with:
+             node-version: 20
+             cache: npm
+
+         - name: Install dependencies
+           run: npm ci
+
+         - name: Build
+           run: npm run build
+
+         - name: Upload artifact
+           uses: actions/upload-pages-artifact@v3
+           with:
+             path: ./dist
+
+     deploy:
+       needs: build
+       runs-on: ubuntu-latest
+       environment:
+         name: github-pages
+         url: ${{ steps.deployment.outputs.page_url }}
+       steps:
+         - name: Deploy to GitHub Pages
+           id: deployment
+           uses: actions/deploy-pages@v4
+   ```
+
+2. **Configure GitHub Pages**
+
+   1. Go to your repository's **Settings** → **Pages**
+   2. Under **Source**, select **GitHub Actions**
+   3. Save the settings
+
+3. **Push to deploy**
+
+   ```bash
+   git add .
+   git commit -m "Add GitHub Pages deployment"
+   git push
+   ```
+
+   Your site will be available at `https://username.github.io/repository-name`
+
+</Steps>
+
+### Custom Domain
+
+To use a custom domain:
+
+1. Create a `CNAME` file in `public/`:
+
+   ```text title="public/CNAME"
+   your-domain.com
+   ```
+
+2. Update `setting.toml`:
+
+   ```toml title="setting.toml"
+   site_url = "https://your-domain.com"
+   ```
+
+3. Configure DNS with your domain provider
+
+## Other Platforms
+
+<Tabs>
+  <TabItem label="Vercel">
+    1. Import your repository on [Vercel](https://vercel.com)
+    2. Configure build settings:
+       - Framework Preset: `Astro`
+       - Build Command: `npm run build`
+       - Output Directory: `dist`
+    3. Deploy
+  </TabItem>
+  
+  <TabItem label="Netlify">
+    1. Connect your repository on [Netlify](https://netlify.com)
+    2. Configure build settings:
+       - Build Command: `npm run build`
+       - Publish Directory: `dist`
+    3. Deploy
+  </TabItem>
+  
+  <TabItem label="Cloudflare Pages">
+    1. Connect your repository on [Cloudflare Pages](https://pages.cloudflare.com)
+    2. Configure build settings:
+       - Framework Preset: `Astro`
+       - Build Command: `npm run build`
+       - Build output directory: `dist`
+    3. Deploy
+  </TabItem>
+</Tabs>
+
+## Manual Deployment
+
+Build your site locally and upload to any static host:
+
+```bash
+npm run build
+```
+
+The built site will be in the `dist/` folder:
+
+<FileTree>
+- dist/
+  - index.html
+  - posts/
+    - my-first-post/
+      - index.html
+  - tags/
+  - pagefind/
+  - assets/
+  - _astro/
+</FileTree>
+
+Upload the contents of `dist/` to your web server.
+
+## Build Configuration
+
+### Base Path
+
+If deploying to a subdirectory (e.g., `username.github.io/blog`), update `astro.config.mjs`:
+
+```javascript title="astro.config.mjs"
+export default defineConfig({
+  site: 'https://username.github.io',
+  base: '/blog',
+  // ...
+});
+```
+
+### Environment Variables
+
+For production builds, you can use environment variables:
+
+```bash
+PUBLIC_SITE_URL=https://your-site.com npm run build
+```

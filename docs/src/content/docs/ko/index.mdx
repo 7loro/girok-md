@@ -1,0 +1,53 @@
+---
+title: 소개
+description: Obsidian 마크다운 파일을 아름다운 블로그로 변환하는 오픈소스 정적 블로그 생성기 girok-md에 대해 알아보세요.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+# girok-md (기록.md)
+
+> **당신의 기록이 누군가의 지도가 됩니다.**
+
+**girok-md**는 [Astro](https://astro.build) 기반의 오픈소스 정적 블로그 생성기입니다. Obsidian 마크다운 파일을 아름답고, 빠르며, SEO에 최적화된 블로그로 변환합니다.
+
+## 철학
+
+**기록의 힘**
+
+- **개인의 기록**: 배운 것을 잊지 않기 위해 남기는 흔적
+- **공유된 기록**: 내 여정의 이정표가 다른 사람의 성장을 돕습니다
+
+당신의 노트는 단순한 개인 메모 그 이상입니다—누군가의 길을 안내하는 지도가 됩니다.
+
+## 주요 기능
+
+<CardGrid>
+  <Card title="마크다운 네이티브" icon="document">
+    위키링크 (`[[link]]`), 이미지 임베드 (`![[image.png]]`), 콜아웃 (`> [!NOTE]`) 완벽 지원
+  </Card>
+  <Card title="증분 동기화" icon="rocket">
+    `publish_sync_at` 타임스탬프 기반으로 변경된 파일만 동기화하여 빌드 시간 최적화
+  </Card>
+  <Card title="전문 검색" icon="magnifier">
+    Pagefind 기반 클라이언트 사이드 검색 - 빠르고 프라이버시 친화적
+  </Card>
+  <Card title="SEO 최적화" icon="star">
+    사이트맵, 메타 태그, Open Graph 자동 생성
+  </Card>
+</CardGrid>
+
+## 기술 스택
+
+- **프레임워크**: [Astro](https://astro.build) 5.x
+- **언어**: TypeScript (strict 모드)
+- **마크다운**: remark, rehype, remark-obsidian
+- **검색**: [Pagefind](https://pagefind.app)
+- **테스트**: Vitest, Playwright
+
+## 빠른 링크
+
+- [빠른 시작](/girok-md/ko/quick-start) - 5분 안에 시작하기
+- [설정](/girok-md/ko/configuration) - 블로그 커스터마이즈
+- [포스트 작성](/girok-md/ko/guides/writing-posts) - 포스트 작성 및 발행 방법
+- [배포](/girok-md/ko/guides/deployment) - GitHub Pages 배포

@@ -1,0 +1,98 @@
+---
+title: Writing Posts
+description: Learn how to write and publish posts with girok-md
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Writing Posts
+
+girok-md makes it easy to write posts in your favorite markdown editor and publish them to your blog.
+
+## Frontmatter
+
+Every post needs frontmatter to define its metadata. Add `publish: true` to include it on your blog.
+
+```markdown title="my-post.md"
+---
+title: My First Post
+publish: true
+date: 2024-01-15
+tags: [astro, blog, tutorial]
+description: This is my first post on my new blog
+---
+
+Your post content starts here...
+```
+
+### Required Fields
+
+| Field | Description |
+|-------|-------------|
+| `title` | The title of your post |
+| `publish` | Set to `true` to publish, `false` to hide |
+
+### Optional Fields
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| `date` | Publication date | File creation date |
+| `tags` | Array of tags | `[]` |
+| `description` | Short description for SEO | First 150 characters |
+| `aliases` | Alternative slugs/paths | `[]` |
+
+## Publishing Workflow
+
+<Aside type="tip" title="Incremental Sync">
+girok-md only syncs files that have changed since the last sync, making builds fast and efficient.
+</Aside>
+
+1. Write your post in your markdown editor (e.g., Obsidian)
+2. Add `publish: true` to the frontmatter
+3. Run `npm run sync` to sync your posts
+4. Run `npm run dev` to preview locally
+5. Commit and push to deploy
+
+## Sync Behavior
+
+The sync process:
+
+1. Scans `source_root_path` for markdown files
+2. Only includes files with `publish: true`
+3. Compares `modified` time with `publish_sync_at`
+4. Copies changed files to `src/content/posts/`
+5. Removes deleted or unpublished files
+
+### Forcing a Full Sync
+
+To re-sync all files regardless of modification time:
+
+```bash
+rm -rf src/content/posts && npm run sync
+```
+
+## Slug Generation
+
+The URL slug is generated from:
+
+1. The `title` field in frontmatter (primary)
+2. The filename (fallback)
+
+**Examples:**
+
+| Title | Generated Slug |
+|-------|---------------|
+| `My First Post` | `/posts/my-first-post` |
+| `안녕하세요 World` | `/posts/안녕하세요-world` |
+| `Post (2024)` | `/posts/post-2024` |
+
+## Images
+
+Place images in the same folder as your markdown files. They will be synced automatically to `public/assets/`.
+
+See [Markdown Syntax](/girok-md/guides/markdown-syntax) for image embed syntax.
+
+## Next Steps
+
+- [Markdown Syntax](/girok-md/guides/markdown-syntax) - Learn about Wikilinks, Callouts, and more
+- [Deployment](/girok-md/guides/deployment) - Deploy your blog

@@ -1,0 +1,167 @@
+---
+title: 프로젝트 구조
+description: girok-md 프로젝트 구조 이해하기
+---
+
+import { FileTree } from '@astrojs/starlight/components';
+
+# 프로젝트 구조
+
+girok-md 프로젝트 디렉토리 구조 개요입니다.
+
+## 디렉토리 레이아웃
+
+<FileTree>
+- src/
+  - components/
+    - Header.astro
+    - Search.astro
+    - TagList.astro
+    - ThemeToggle.astro
+    - TOC.astro
+  - layouts/
+    - BaseLayout.astro
+    - PostLayout.astro
+  - pages/
+    - index.astro
+    - posts/
+      - [...slug].astro
+    - tags/
+      - [tag].astro
+      - index.astro
+  - content/
+    - posts/ **(자동 생성)**
+    - config.ts
+  - styles/
+    - global.css
+  - utils/
+    - date.ts
+    - tagColor.ts
+  - i18n/
+    - en.ts
+    - ko.ts
+    - index.ts
+- scripts/
+  - sync.ts
+  - clean.ts
+  - __tests__/
+- public/
+  - assets/ **(자동 생성)**
+  - favicon.ico
+- setting.toml
+- astro.config.mjs
+- tsconfig.json
+- package.json
+</FileTree>
+
+## 주요 디렉토리
+
+### `src/components/`
+
+재사용 가능한 Astro 컴포넌트:
+
+| 컴포넌트 | 설명 |
+|----------|------|
+| `Header.astro` | 네비게이션이 있는 사이트 헤더 |
+| `Search.astro` | Pagefind 검색 인터페이스 |
+| `TagList.astro` | 태그 클라우드 컴포넌트 |
+| `ThemeToggle.astro` | 다크/라이트 모드 토글 |
+| `TOC.astro` | 목차 |
+
+### `src/layouts/`
+
+콘텐츠를 감싸는 페이지 레이아웃:
+
+| 레이아웃 | 설명 |
+|----------|------|
+| `BaseLayout.astro` | 기본 HTML 구조, 메타 태그 |
+| `PostLayout.astro` | TOC, 태그, 날짜가 있는 포스트 페이지 |
+
+### `src/pages/`
+
+파일 기반 라우팅:
+
+| 경로 | 라우트 |
+|------|--------|
+| `index.astro` | `/` (홈) |
+| `posts/[...slug].astro` | `/posts/*` |
+| `tags/index.astro` | `/tags` |
+| `tags/[tag].astro` | `/tags/*` |
+
+### `src/content/posts/`
+
+:::caution[자동 생성]
+이 폴더는 `npm run sync`로 관리됩니다. 직접 편집하지 마세요.
+:::
+
+소스 폴더에서 동기화된 마크다운 포스트가 포함됩니다.
+
+### `scripts/`
+
+Node.js 스크립트:
+
+| 스크립트 | 설명 |
+|----------|------|
+| `sync.ts` | 소스에서 콘텐츠로 마크다운 동기화 |
+| `clean.ts` | 동기화된 콘텐츠 정리 |
+
+### `public/`
+
+루트에서 제공되는 정적 에셋:
+
+| 경로 | 설명 |
+|------|------|
+| `public/assets/` | 동기화된 이미지 (자동 생성) |
+| `public/favicon.ico` | 사이트 파비콘 |
+
+## 설정 파일
+
+### `setting.toml`
+
+메인 블로그 설정:
+
+```toml
+source_root_path = "/path/to/markdown"
+blog_name = "내 블로그"
+site_url = "https://example.com"
+locale = "ko"
+
+[intro]
+title = "환영합니다"
+description = "내 블로그 설명"
+```
+
+### `astro.config.mjs`
+
+Astro 프레임워크 설정:
+
+```javascript
+import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
+
+export default defineConfig({
+  site: settings.site_url,
+  base: '/',
+  integrations: [sitemap()],
+});
+```
+
+### `src/content/config.ts`
+
+콘텐츠 컬렉션 스키마:
+
+```typescript
+import { defineCollection, z } from 'astro:content';
+
+const posts = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    date: z.date(),
+    tags: z.array(z.string()).optional(),
+    description: z.string().optional(),
+  }),
+});
+
+export const collections = { posts };
+```

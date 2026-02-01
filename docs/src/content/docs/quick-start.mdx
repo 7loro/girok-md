@@ -1,0 +1,89 @@
+---
+title: Quick Start
+description: Get started with girok-md in 5 minutes
+---
+
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+
+# Quick Start
+
+Get your blog up and running in just a few minutes.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) v20 or higher
+- [Git](https://git-scm.com/)
+- A folder with markdown files (e.g., Obsidian vault)
+
+## Installation
+
+<Steps>
+
+1. **Create your repository**
+
+   Click the **Use this template** button on the [girok-md repository](https://github.com/7loro/girok-md) to create your own repository.
+
+   :::tip[Naming your repository]
+   Name your repository `username.github.io` (e.g., `7loro.github.io`) for easy GitHub Pages deployment.
+   :::
+
+2. **Clone and install dependencies**
+
+   <Tabs>
+     <TabItem label="npm">
+       ```bash
+       git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+       cd YOUR_REPO
+       npm install
+       ```
+     </TabItem>
+     <TabItem label="pnpm">
+       ```bash
+       git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+       cd YOUR_REPO
+       pnpm install
+       ```
+     </TabItem>
+   </Tabs>
+
+3. **Configure your blog**
+
+   Edit the `setting.toml` file:
+
+   ```toml title="setting.toml"
+   # Absolute path to your markdown files
+   source_root_path = "/path/to/your/obsidian/vault"
+
+   # Blog name
+   blog_name = "My Blog"
+
+   # Site URL (for SEO)
+   site_url = "https://your-username.github.io"
+
+   # Locale (en or ko)
+   locale = "en"
+   ```
+
+4. **Sync your posts**
+
+   ```bash
+   npm run sync
+   ```
+
+   This command scans your markdown folder and copies files with `publish: true` in their frontmatter.
+
+5. **Start the development server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Visit [http://localhost:4321](http://localhost:4321) to see your blog!
+
+</Steps>
+
+## Next Steps
+
+- [Configuration](/girok-md/configuration) - Learn about all configuration options
+- [Writing Posts](/girok-md/guides/writing-posts) - Learn how to write and format posts
+- [Deployment](/girok-md/guides/deployment) - Deploy your blog to GitHub Pages

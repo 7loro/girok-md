@@ -1,0 +1,127 @@
+---
+title: Commands
+description: Reference for all girok-md CLI commands
+---
+
+# Commands
+
+Reference for all available commands in girok-md.
+
+## npm Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server on `localhost:4321` |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build locally |
+| `npm run sync` | Sync posts from source folder |
+| `npm run clean` | Clean synced posts |
+| `npm test` | Run tests |
+
+## Development
+
+### `npm run dev`
+
+Starts the Astro development server with hot module replacement.
+
+```bash
+npm run dev
+```
+
+- Default URL: http://localhost:4321
+- Hot reloading enabled
+- Draft posts visible
+
+### `npm run preview`
+
+Preview the production build locally before deploying.
+
+```bash
+npm run build && npm run preview
+```
+
+## Building
+
+### `npm run build`
+
+Builds your site for production.
+
+```bash
+npm run build
+```
+
+This command:
+1. Compiles all Astro pages to static HTML
+2. Bundles and minifies CSS/JS
+3. Runs Pagefind to generate search index
+
+Output is in the `dist/` folder.
+
+## Syncing
+
+### `npm run sync`
+
+Syncs markdown files from your source folder to `src/content/posts/`.
+
+```bash
+npm run sync
+```
+
+**Behavior:**
+- Reads `source_root_path` from `setting.toml`
+- Scans for `.md` files with `publish: true`
+- Copies new/changed files to `src/content/posts/`
+- Copies images to `public/assets/`
+- Removes posts that were unpublished or deleted
+
+**Options:**
+
+```bash
+# Force full sync (re-sync all files)
+rm -rf src/content/posts && npm run sync
+```
+
+### `npm run clean`
+
+Removes all synced posts and assets.
+
+```bash
+npm run clean
+```
+
+This clears:
+- `src/content/posts/`
+- `public/assets/` (synced images only)
+
+## Testing
+
+### `npm test`
+
+Runs the test suite with Vitest.
+
+```bash
+npm test
+```
+
+**Other test commands:**
+
+```bash
+# Run once (no watch)
+npx vitest run
+
+# Run specific file
+npx vitest run scripts/__tests__/sync.test.ts
+
+# Run by test name
+npx vitest -t "should convert"
+```
+
+## Pagefind
+
+The search index is automatically built during `npm run build` via the `postbuild` script.
+
+To manually build the search index:
+
+```bash
+npx pagefind --site dist
+```

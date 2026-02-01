@@ -1,0 +1,115 @@
+---
+title: 설정
+description: setting.toml로 girok-md 설정하는 방법 알아보기
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+# 설정
+
+girok-md는 프로젝트 루트의 `setting.toml` 파일로 설정합니다.
+
+## 기본 설정
+
+```toml title="setting.toml"
+# 필수: 마크다운 파일 경로
+source_root_path = "/path/to/your/obsidian/vault"
+
+# 블로그 이름 (헤더와 메타데이터에 표시)
+blog_name = "내 블로그"
+
+# SEO용 사이트 URL (사이트맵, canonical URL)
+site_url = "https://username.github.io"
+
+# 언어: "en" 또는 "ko"
+locale = "ko"
+```
+
+## 설정 옵션
+
+### `source_root_path`
+
+**필수.** 마크다운 폴더의 절대 경로 (예: Obsidian vault).
+
+```toml
+source_root_path = "/Users/john/Documents/Obsidian/MyVault"
+```
+
+:::caution
+절대 경로만 사용하세요. 상대 경로는 지원되지 않습니다.
+:::
+
+### `blog_name`
+
+블로그 이름. 헤더에 표시되고 페이지 제목에 사용됩니다.
+
+```toml
+blog_name = "John의 기술 블로그"
+```
+
+### `site_url`
+
+사이트 URL. 다음 용도로 사용됩니다:
+- sitemap.xml 생성
+- SEO를 위한 canonical URL 설정
+- Open Graph 메타 태그
+
+```toml
+site_url = "https://john.github.io"
+```
+
+### `locale`
+
+블로그의 기본 언어. 날짜 형식과 UI 레이블에 영향을 줍니다.
+
+```toml
+locale = "ko"  # 또는 영어는 "en"
+```
+
+## 인트로 섹션
+
+홈페이지에 표시되는 인트로 섹션 설정:
+
+```toml
+[intro]
+title = "내 블로그에 오신 것을 환영합니다"
+description = "기술과 삶에 대한 생각을 공유합니다"
+```
+
+## 환경 변수
+
+민감한 값에는 환경 변수를 사용할 수 있습니다:
+
+<Tabs>
+  <TabItem label="로컬 개발">
+    `.env` 파일 생성:
+    ```bash title=".env"
+    PUBLIC_SITE_URL=https://your-site.com
+    ```
+  </TabItem>
+  <TabItem label="GitHub Actions">
+    저장소 설정에서 시크릿 추가:
+    - Settings → Secrets and variables → Actions로 이동
+    - 환경 변수 추가
+  </TabItem>
+</Tabs>
+
+## 설정 후 파일 구조
+
+`npm run sync` 실행 후 프로젝트 구조:
+
+```
+your-blog/
+├── setting.toml           # 설정 파일
+├── src/
+│   └── content/
+│       └── posts/         # 동기화된 마크다운 파일
+├── public/
+│   └── assets/            # 동기화된 이미지
+└── ...
+```
+
+## 다음 단계
+
+- [포스트 작성](/girok-md/ko/guides/writing-posts) - 포스트 작성 방법
+- [마크다운 문법](/girok-md/ko/guides/markdown-syntax) - 지원되는 마크다운 기능

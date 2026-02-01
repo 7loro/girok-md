@@ -1,0 +1,29 @@
+/* girok-md 문서 사이트 커스텀 스타일 */
+
+:root {
+  /* 강조 색상 - Astro 퍼플 계열 */
+  --sl-color-accent-low: #2a2359;
+  --sl-color-accent: #8b5cf6;
+  --sl-color-accent-high: #c4b5fd;
+
+  /* 폰트 */
+  --sl-font: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --sl-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* 다크 모드 강조 색상 */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #4c1d95;
+  --sl-color-accent: #a78bfa;
+  --sl-color-accent-high: #ddd6fe;
+}
+
+/* 코드 블록 스타일 개선 */
+.sl-markdown-content pre {
+  border-radius: 0.5rem;
+}
+
+/* 사이드바 로고 크기 조정 */
+.site-title img {
+  height: 2rem;
+}

@@ -1,0 +1,53 @@
+---
+title: Introduction
+description: Learn about girok-md, an open-source static blog generator that transforms your Obsidian markdown files into a beautiful blog.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+# girok-md (기록.md)
+
+> **Your record becomes a map for others.**
+
+**girok-md** is an open-source static blog generator built with [Astro](https://astro.build). It transforms your Obsidian markdown files into a beautiful, fast, and SEO-optimized blog.
+
+## Philosophy
+
+**The Power of Recording**
+
+- **Personal Records**: Traces left behind so you don't forget what you've learned.
+- **Shared Records**: Milestones from your journey that help others grow.
+
+Your notes are more than personal memos—they become a map that guides someone else's path.
+
+## Key Features
+
+<CardGrid>
+  <Card title="Markdown Native" icon="document">
+    Full support for Wikilinks (`[[link]]`), image embeds (`![[image.png]]`), and Callouts (`> [!NOTE]`)
+  </Card>
+  <Card title="Incremental Sync" icon="rocket">
+    Only syncs changed files based on `publish_sync_at` timestamp for optimized build times
+  </Card>
+  <Card title="Full-Text Search" icon="magnifier">
+    Client-side search powered by Pagefind - fast and privacy-friendly
+  </Card>
+  <Card title="SEO Optimized" icon="star">
+    Auto-generated sitemap, meta tags, and Open Graph support
+  </Card>
+</CardGrid>
+
+## Tech Stack
+
+- **Framework**: [Astro](https://astro.build) 5.x
+- **Language**: TypeScript (strict mode)
+- **Markdown**: remark, rehype, remark-obsidian
+- **Search**: [Pagefind](https://pagefind.app)
+- **Testing**: Vitest, Playwright
+
+## Quick Links
+
+- [Quick Start](/girok-md/quick-start) - Get up and running in 5 minutes
+- [Configuration](/girok-md/configuration) - Customize your blog
+- [Writing Posts](/girok-md/guides/writing-posts) - Learn how to write and publish posts
+- [Deployment](/girok-md/guides/deployment) - Deploy to GitHub Pages

@@ -1,0 +1,167 @@
+---
+title: Project Structure
+description: Understanding the girok-md project structure
+---
+
+import { FileTree } from '@astrojs/starlight/components';
+
+# Project Structure
+
+Overview of the girok-md project directory structure.
+
+## Directory Layout
+
+<FileTree>
+- src/
+  - components/
+    - Header.astro
+    - Search.astro
+    - TagList.astro
+    - ThemeToggle.astro
+    - TOC.astro
+  - layouts/
+    - BaseLayout.astro
+    - PostLayout.astro
+  - pages/
+    - index.astro
+    - posts/
+      - [...slug].astro
+    - tags/
+      - [tag].astro
+      - index.astro
+  - content/
+    - posts/ **(auto-generated)**
+    - config.ts
+  - styles/
+    - global.css
+  - utils/
+    - date.ts
+    - tagColor.ts
+  - i18n/
+    - en.ts
+    - ko.ts
+    - index.ts
+- scripts/
+  - sync.ts
+  - clean.ts
+  - __tests__/
+- public/
+  - assets/ **(auto-generated)**
+  - favicon.ico
+- setting.toml
+- astro.config.mjs
+- tsconfig.json
+- package.json
+</FileTree>
+
+## Key Directories
+
+### `src/components/`
+
+Reusable Astro components:
+
+| Component | Description |
+|-----------|-------------|
+| `Header.astro` | Site header with navigation |
+| `Search.astro` | Pagefind search interface |
+| `TagList.astro` | Tag cloud component |
+| `ThemeToggle.astro` | Dark/light mode toggle |
+| `TOC.astro` | Table of contents |
+
+### `src/layouts/`
+
+Page layouts that wrap content:
+
+| Layout | Description |
+|--------|-------------|
+| `BaseLayout.astro` | Base HTML structure, meta tags |
+| `PostLayout.astro` | Post page with TOC, tags, date |
+
+### `src/pages/`
+
+File-based routing:
+
+| Path | Route |
+|------|-------|
+| `index.astro` | `/` (home) |
+| `posts/[...slug].astro` | `/posts/*` |
+| `tags/index.astro` | `/tags` |
+| `tags/[tag].astro` | `/tags/*` |
+
+### `src/content/posts/`
+
+:::caution[Auto-generated]
+This folder is managed by `npm run sync`. Do not edit files here directly.
+:::
+
+Contains synced markdown posts from your source folder.
+
+### `scripts/`
+
+Node.js scripts:
+
+| Script | Description |
+|--------|-------------|
+| `sync.ts` | Syncs markdown from source to content |
+| `clean.ts` | Cleans synced content |
+
+### `public/`
+
+Static assets served at root:
+
+| Path | Description |
+|------|-------------|
+| `public/assets/` | Synced images (auto-generated) |
+| `public/favicon.ico` | Site favicon |
+
+## Configuration Files
+
+### `setting.toml`
+
+Main blog configuration:
+
+```toml
+source_root_path = "/path/to/markdown"
+blog_name = "My Blog"
+site_url = "https://example.com"
+locale = "en"
+
+[intro]
+title = "Welcome"
+description = "My blog description"
+```
+
+### `astro.config.mjs`
+
+Astro framework configuration:
+
+```javascript
+import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
+
+export default defineConfig({
+  site: settings.site_url,
+  base: '/',
+  integrations: [sitemap()],
+});
+```
+
+### `src/content/config.ts`
+
+Content collection schema:
+
+```typescript
+import { defineCollection, z } from 'astro:content';
+
+const posts = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    date: z.date(),
+    tags: z.array(z.string()).optional(),
+    description: z.string().optional(),
+  }),
+});
+
+export const collections = { posts };
+```

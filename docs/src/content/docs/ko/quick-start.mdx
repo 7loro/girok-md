@@ -1,0 +1,89 @@
+---
+title: 빠른 시작
+description: 5분 안에 girok-md 시작하기
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# 빠른 시작
+
+몇 분 만에 블로그를 만들고 실행할 수 있습니다.
+
+## 사전 요구사항
+
+- [Node.js](https://nodejs.org/) v20 이상
+- [Git](https://git-scm.com/)
+- 마크다운 파일이 있는 폴더 (예: Obsidian vault)
+
+## 설치
+
+<Steps>
+
+1. **저장소 생성**
+
+   [girok-md 저장소](https://github.com/7loro/girok-md)에서 **Use this template** 버튼을 클릭하여 나만의 저장소를 생성합니다.
+
+   :::tip[저장소 이름 정하기]
+   저장소 이름을 `username.github.io` (예: `7loro.github.io`)로 지정하면 GitHub Pages 배포가 쉬워집니다.
+   :::
+
+2. **클론 및 의존성 설치**
+
+   <Tabs>
+     <TabItem label="npm">
+       ```bash
+       git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+       cd YOUR_REPO
+       npm install
+       ```
+     </TabItem>
+     <TabItem label="pnpm">
+       ```bash
+       git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+       cd YOUR_REPO
+       pnpm install
+       ```
+     </TabItem>
+   </Tabs>
+
+3. **블로그 설정**
+
+   `setting.toml` 파일을 수정합니다:
+
+   ```toml title="setting.toml"
+   # 마크다운 파일의 절대 경로
+   source_root_path = "/path/to/your/obsidian/vault"
+
+   # 블로그 이름
+   blog_name = "내 블로그"
+
+   # 사이트 URL (SEO용)
+   site_url = "https://your-username.github.io"
+
+   # 언어 (en 또는 ko)
+   locale = "ko"
+   ```
+
+4. **포스트 동기화**
+
+   ```bash
+   npm run sync
+   ```
+
+   이 명령어는 마크다운 폴더를 스캔하여 frontmatter에 `publish: true`가 있는 파일을 복사합니다.
+
+5. **개발 서버 시작**
+
+   ```bash
+   npm run dev
+   ```
+
+   [http://localhost:4321](http://localhost:4321)에서 블로그를 확인하세요!
+
+</Steps>
+
+## 다음 단계
+
+- [설정](/girok-md/ko/configuration) - 모든 설정 옵션 알아보기
+- [포스트 작성](/girok-md/ko/guides/writing-posts) - 포스트 작성 및 포맷팅 방법
+- [배포](/girok-md/ko/guides/deployment) - GitHub Pages에 블로그 배포하기

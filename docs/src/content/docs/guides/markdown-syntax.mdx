@@ -1,0 +1,178 @@
+---
+title: Markdown Syntax
+description: Learn about the markdown syntax supported by girok-md, including Wikilinks, Callouts, and image embeds
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Markdown Syntax
+
+girok-md supports standard markdown plus Obsidian-specific features like Wikilinks, Callouts, and image embeds.
+
+## Wikilinks
+
+Link to other posts using Wikilinks.
+
+<Tabs>
+  <TabItem label="Syntax">
+    ```markdown
+    [[Document Name]]
+    [[Document Name|Display Text]]
+    ```
+  </TabItem>
+  <TabItem label="Result">
+    - `[[My Post]]` → Link with text "My Post"
+    - `[[My Post|Click here]]` → Link with text "Click here"
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+Wikilinks are resolved based on the post's slug. If the linked post doesn't exist, the link will be rendered as plain text.
+</Aside>
+
+## Image Embeds
+
+Embed images using the Obsidian-style syntax.
+
+<Tabs>
+  <TabItem label="Syntax">
+    ```markdown
+    ![[image.png]]
+    ![[image.png|300]]
+    ```
+  </TabItem>
+  <TabItem label="Result">
+    - `![[photo.jpg]]` → Full-width image
+    - `![[photo.jpg|400]]` → Image with 400px width
+  </TabItem>
+</Tabs>
+
+Images are automatically synced from your source folder to `public/assets/`.
+
+## Callouts
+
+Create styled callout boxes for notes, warnings, and tips.
+
+### Syntax
+
+```markdown
+> [!NOTE] Title
+> Your callout content here.
+> Can span multiple lines.
+```
+
+### Available Types
+
+<Tabs>
+  <TabItem label="Note">
+    ```markdown
+    > [!NOTE]
+    > Highlights information that users should take into account.
+    ```
+  </TabItem>
+  <TabItem label="Tip">
+    ```markdown
+    > [!TIP]
+    > Optional information to help a user be more successful.
+    ```
+  </TabItem>
+  <TabItem label="Warning">
+    ```markdown
+    > [!WARNING]
+    > Critical content demanding immediate user attention.
+    ```
+  </TabItem>
+  <TabItem label="Danger">
+    ```markdown
+    > [!DANGER]
+    > Negative potential consequences of an action.
+    ```
+  </TabItem>
+</Tabs>
+
+### Folding Callouts
+
+Make callouts collapsible:
+
+```markdown
+> [!FAQ]- Frequently Asked Questions
+> This content is hidden by default.
+> Click to expand.
+```
+
+## Code Blocks
+
+Standard fenced code blocks with syntax highlighting:
+
+````markdown
+```typescript
+function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+```
+````
+
+### Supported Languages
+
+girok-md uses Astro's built-in Shiki highlighter, supporting 100+ languages including:
+
+- JavaScript/TypeScript
+- Python, Ruby, Go, Rust
+- HTML, CSS, SCSS
+- JSON, YAML, TOML
+- Bash, PowerShell
+- And many more...
+
+## Tables
+
+Standard markdown tables:
+
+```markdown
+| Feature | Supported |
+|---------|-----------|
+| Wikilinks | ✅ |
+| Callouts | ✅ |
+| Image embeds | ✅ |
+```
+
+## GFM Features
+
+girok-md supports GitHub Flavored Markdown (GFM):
+
+### Task Lists
+
+```markdown
+- [x] Completed task
+- [ ] Incomplete task
+```
+
+### Strikethrough
+
+```markdown
+~~deleted text~~
+```
+
+### Autolinks
+
+URLs are automatically converted to links:
+
+```markdown
+https://github.com/7loro/girok-md
+```
+
+## Math (LaTeX)
+
+Inline and block math expressions using LaTeX:
+
+```markdown
+Inline: $E = mc^2$
+
+Block:
+$$
+\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+```
+
+<Aside type="caution">
+Math rendering requires additional configuration. See the Astro documentation for KaTeX or MathJax integration.
+</Aside>

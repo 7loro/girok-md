@@ -1,0 +1,178 @@
+---
+title: 마크다운 문법
+description: girok-md에서 지원하는 마크다운 문법 알아보기 - 위키링크, 콜아웃, 이미지 임베드 포함
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+# 마크다운 문법
+
+girok-md는 표준 마크다운과 함께 위키링크, 콜아웃, 이미지 임베드 같은 Obsidian 전용 기능을 지원합니다.
+
+## 위키링크
+
+위키링크를 사용하여 다른 포스트에 링크할 수 있습니다.
+
+<Tabs>
+  <TabItem label="문법">
+    ```markdown
+    [[문서 이름]]
+    [[문서 이름|표시 텍스트]]
+    ```
+  </TabItem>
+  <TabItem label="결과">
+    - `[[내 포스트]]` → "내 포스트" 텍스트가 있는 링크
+    - `[[내 포스트|여기를 클릭]]` → "여기를 클릭" 텍스트가 있는 링크
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+위키링크는 포스트의 슬러그를 기반으로 해석됩니다. 링크된 포스트가 존재하지 않으면 링크는 일반 텍스트로 렌더링됩니다.
+</Aside>
+
+## 이미지 임베드
+
+Obsidian 스타일 문법으로 이미지를 임베드할 수 있습니다.
+
+<Tabs>
+  <TabItem label="문법">
+    ```markdown
+    ![[image.png]]
+    ![[image.png|300]]
+    ```
+  </TabItem>
+  <TabItem label="결과">
+    - `![[photo.jpg]]` → 전체 너비 이미지
+    - `![[photo.jpg|400]]` → 400px 너비 이미지
+  </TabItem>
+</Tabs>
+
+이미지는 소스 폴더에서 `public/assets/`로 자동 동기화됩니다.
+
+## 콜아웃
+
+노트, 경고, 팁을 위한 스타일 박스를 만들 수 있습니다.
+
+### 문법
+
+```markdown
+> [!NOTE] 제목
+> 콜아웃 내용은 여기에.
+> 여러 줄도 가능합니다.
+```
+
+### 사용 가능한 타입
+
+<Tabs>
+  <TabItem label="Note">
+    ```markdown
+    > [!NOTE]
+    > 사용자가 알아야 할 정보를 강조합니다.
+    ```
+  </TabItem>
+  <TabItem label="Tip">
+    ```markdown
+    > [!TIP]
+    > 사용자에게 도움이 되는 선택적 정보입니다.
+    ```
+  </TabItem>
+  <TabItem label="Warning">
+    ```markdown
+    > [!WARNING]
+    > 즉각적인 주의가 필요한 중요한 내용입니다.
+    ```
+  </TabItem>
+  <TabItem label="Danger">
+    ```markdown
+    > [!DANGER]
+    > 어떤 행동의 부정적인 잠재적 결과입니다.
+    ```
+  </TabItem>
+</Tabs>
+
+### 접이식 콜아웃
+
+콜아웃을 접을 수 있게 만들기:
+
+```markdown
+> [!FAQ]- 자주 묻는 질문
+> 이 내용은 기본적으로 숨겨져 있습니다.
+> 클릭하여 펼치세요.
+```
+
+## 코드 블록
+
+구문 강조가 있는 표준 펜스드 코드 블록:
+
+````markdown
+```typescript
+function greet(name: string): string {
+  return `안녕하세요, ${name}!`;
+}
+```
+````
+
+### 지원 언어
+
+girok-md는 Astro의 내장 Shiki 하이라이터를 사용하여 100개 이상의 언어를 지원합니다:
+
+- JavaScript/TypeScript
+- Python, Ruby, Go, Rust
+- HTML, CSS, SCSS
+- JSON, YAML, TOML
+- Bash, PowerShell
+- 그 외 다수...
+
+## 테이블
+
+표준 마크다운 테이블:
+
+```markdown
+| 기능 | 지원 여부 |
+|------|-----------|
+| 위키링크 | ✅ |
+| 콜아웃 | ✅ |
+| 이미지 임베드 | ✅ |
+```
+
+## GFM 기능
+
+girok-md는 GitHub Flavored Markdown (GFM)을 지원합니다:
+
+### 할 일 목록
+
+```markdown
+- [x] 완료된 작업
+- [ ] 미완료 작업
+```
+
+### 취소선
+
+```markdown
+~~삭제된 텍스트~~
+```
+
+### 자동 링크
+
+URL은 자동으로 링크로 변환됩니다:
+
+```markdown
+https://github.com/7loro/girok-md
+```
+
+## 수학 (LaTeX)
+
+LaTeX를 사용한 인라인 및 블록 수식:
+
+```markdown
+인라인: $E = mc^2$
+
+블록:
+$$
+\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+```
+
+<Aside type="caution">
+수학 렌더링은 추가 설정이 필요합니다. KaTeX 또는 MathJax 통합은 Astro 문서를 참조하세요.
+</Aside>

@@ -1,0 +1,98 @@
+---
+title: 포스트 작성
+description: girok-md로 포스트를 작성하고 발행하는 방법 알아보기
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# 포스트 작성
+
+girok-md를 사용하면 좋아하는 마크다운 에디터에서 포스트를 작성하고 쉽게 블로그에 발행할 수 있습니다.
+
+## Frontmatter
+
+모든 포스트는 메타데이터를 정의하는 frontmatter가 필요합니다. `publish: true`를 추가하면 블로그에 포함됩니다.
+
+```markdown title="my-post.md"
+---
+title: 첫 번째 포스트
+publish: true
+date: 2024-01-15
+tags: [astro, blog, tutorial]
+description: 새 블로그의 첫 번째 포스트입니다
+---
+
+포스트 내용은 여기에...
+```
+
+### 필수 필드
+
+| 필드 | 설명 |
+|------|------|
+| `title` | 포스트 제목 |
+| `publish` | `true`로 설정하면 발행, `false`로 설정하면 숨김 |
+
+### 선택 필드
+
+| 필드 | 설명 | 기본값 |
+|------|------|--------|
+| `date` | 발행일 | 파일 생성일 |
+| `tags` | 태그 배열 | `[]` |
+| `description` | SEO용 짧은 설명 | 본문 첫 150자 |
+| `aliases` | 대체 슬러그/경로 | `[]` |
+
+## 발행 워크플로우
+
+<Aside type="tip" title="증분 동기화">
+girok-md는 마지막 동기화 이후 변경된 파일만 동기화하여 빌드를 빠르고 효율적으로 만듭니다.
+</Aside>
+
+1. 마크다운 에디터(예: Obsidian)에서 포스트 작성
+2. frontmatter에 `publish: true` 추가
+3. `npm run sync` 실행하여 포스트 동기화
+4. `npm run dev` 실행하여 로컬에서 미리보기
+5. 커밋하고 푸시하여 배포
+
+## 동기화 동작
+
+동기화 프로세스:
+
+1. `source_root_path`에서 마크다운 파일 스캔
+2. `publish: true`인 파일만 포함
+3. `modified` 시간과 `publish_sync_at` 비교
+4. 변경된 파일을 `src/content/posts/`에 복사
+5. 삭제되거나 발행 취소된 파일 제거
+
+### 전체 동기화 강제 실행
+
+수정 시간과 관계없이 모든 파일을 다시 동기화하려면:
+
+```bash
+rm -rf src/content/posts && npm run sync
+```
+
+## 슬러그 생성
+
+URL 슬러그는 다음에서 생성됩니다:
+
+1. frontmatter의 `title` 필드 (우선)
+2. 파일명 (대체)
+
+**예시:**
+
+| 제목 | 생성된 슬러그 |
+|------|--------------|
+| `My First Post` | `/posts/my-first-post` |
+| `안녕하세요 World` | `/posts/안녕하세요-world` |
+| `Post (2024)` | `/posts/post-2024` |
+
+## 이미지
+
+이미지는 마크다운 파일과 같은 폴더에 넣으세요. 자동으로 `public/assets/`에 동기화됩니다.
+
+이미지 임베드 문법은 [마크다운 문법](/girok-md/ko/guides/markdown-syntax)을 참조하세요.
+
+## 다음 단계
+
+- [마크다운 문법](/girok-md/ko/guides/markdown-syntax) - 위키링크, 콜아웃 등 알아보기
+- [배포](/girok-md/ko/guides/deployment) - 블로그 배포하기

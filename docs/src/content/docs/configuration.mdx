@@ -1,0 +1,115 @@
+---
+title: Configuration
+description: Learn how to configure girok-md with setting.toml
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Configuration
+
+girok-md is configured through the `setting.toml` file in your project root.
+
+## Basic Configuration
+
+```toml title="setting.toml"
+# Required: Path to your markdown files
+source_root_path = "/path/to/your/obsidian/vault"
+
+# Blog name (displayed in header and metadata)
+blog_name = "My Blog"
+
+# Site URL for SEO (sitemap, canonical URLs)
+site_url = "https://username.github.io"
+
+# Locale: "en" or "ko"
+locale = "en"
+```
+
+## Configuration Options
+
+### `source_root_path`
+
+**Required.** The absolute path to your markdown folder (e.g., Obsidian vault).
+
+```toml
+source_root_path = "/Users/john/Documents/Obsidian/MyVault"
+```
+
+:::caution
+Use absolute paths only. Relative paths are not supported.
+:::
+
+### `blog_name`
+
+The name of your blog. Displayed in the header and used in page titles.
+
+```toml
+blog_name = "John's Tech Blog"
+```
+
+### `site_url`
+
+Your site's URL. Used for:
+- Generating sitemap.xml
+- Setting canonical URLs for SEO
+- Open Graph meta tags
+
+```toml
+site_url = "https://john.github.io"
+```
+
+### `locale`
+
+The default language for your blog. Affects date formatting and UI labels.
+
+```toml
+locale = "en"  # or "ko" for Korean
+```
+
+## Intro Section
+
+Configure the intro section displayed on the home page:
+
+```toml
+[intro]
+title = "Welcome to My Blog"
+description = "Sharing my thoughts on technology and life"
+```
+
+## Environment Variables
+
+You can also use environment variables for sensitive values:
+
+<Tabs>
+  <TabItem label="Local development">
+    Create a `.env` file:
+    ```bash title=".env"
+    PUBLIC_SITE_URL=https://your-site.com
+    ```
+  </TabItem>
+  <TabItem label="GitHub Actions">
+    Add secrets in your repository settings:
+    - Go to Settings → Secrets and variables → Actions
+    - Add your environment variables
+  </TabItem>
+</Tabs>
+
+## File Structure After Configuration
+
+After running `npm run sync`, your project structure will look like:
+
+```
+your-blog/
+├── setting.toml           # Your configuration
+├── src/
+│   └── content/
+│       └── posts/         # Synced markdown files
+├── public/
+│   └── assets/            # Synced images
+└── ...
+```
+
+## Next Steps
+
+- [Writing Posts](/girok-md/guides/writing-posts) - Learn how to write posts
+- [Markdown Syntax](/girok-md/guides/markdown-syntax) - Supported markdown features
