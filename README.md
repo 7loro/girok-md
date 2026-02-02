@@ -33,6 +33,7 @@ Your notes are more than personal memos—they become a map that guides someone 
 - **Incremental Sync**: Only syncs changed files based on `publish_sync_at` timestamp
 - **Full-Text Search**: Client-side search powered by Pagefind
 - **Tag System**: Browse and filter posts by tags
+- **Reading Time**: Estimated reading time for each post (supports Korean and English)
 - **Dark/Light Theme**: System preference detection with manual toggle
 - **SEO Optimized**: Auto-generated sitemap and meta tags
 - **GitHub Pages**: One-click deployment support
