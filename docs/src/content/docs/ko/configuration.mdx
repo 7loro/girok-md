@@ -107,6 +107,68 @@ your-blog/
 └── ...
 ```
 
+## 댓글
+
+[Giscus](https://giscus.app)를 사용하여 블로그 포스트에 댓글 기능을 추가할 수 있습니다. Giscus는 GitHub Discussions 기반의 댓글 시스템입니다.
+
+### 설정 방법
+
+1. **GitHub Discussions 활성화**:
+   - 저장소 → Settings → General → Features
+   - "Discussions" 체크
+
+2. **Giscus 앱 설치**:
+   - [github.com/apps/giscus](https://github.com/apps/giscus) 방문
+   - "Install" 클릭 후 저장소 선택
+
+3. **설정 생성**:
+   - [giscus.app](https://giscus.app) 방문
+   - 저장소 정보 입력
+   - 생성된 값 복사
+
+4. **`setting.toml` 업데이트**:
+
+```toml title="setting.toml"
+[comments]
+enabled = true
+provider = "giscus"
+
+[comments.giscus]
+repo = "username/repo"
+repo_id = "R_kgDOxxxxxx"
+category = "Announcements"
+category_id = "DIC_kwDOxxxxxx"
+mapping = "pathname"
+strict = "0"
+reactions_enabled = "1"
+emit_metadata = "0"
+input_position = "top"
+theme = "preferred_color_scheme"
+lang = "ko"
+```
+
+### 설정 옵션
+
+| 옵션 | 설명 | 값 |
+|------|------|-----|
+| `enabled` | 댓글 활성화/비활성화 | `true` / `false` |
+| `provider` | 댓글 시스템 제공자 | `"giscus"` |
+| `repo` | GitHub 저장소 | `"username/repo"` |
+| `repo_id` | giscus.app에서 생성된 저장소 ID | `"R_kgDOxxxxxx"` |
+| `category` | Discussion 카테고리 이름 | `"Announcements"`, `"General"` 등 |
+| `category_id` | giscus.app에서 생성된 카테고리 ID | `"DIC_kwDOxxxxxx"` |
+| `mapping` | 포스트와 Discussion 매핑 방식 | `"pathname"`, `"url"`, `"title"`, `"og:title"` |
+| `strict` | 엄격한 제목 매칭 | `"0"` (끔) / `"1"` (켬) |
+| `reactions_enabled` | 반응 활성화 | `"0"` (끔) / `"1"` (켬) |
+| `emit_metadata` | Discussion 메타데이터 전송 | `"0"` (끔) / `"1"` (켬) |
+| `input_position` | 댓글 입력창 위치 | `"top"` / `"bottom"` |
+| `theme` | 색상 테마 | `"light"`, `"dark"`, `"preferred_color_scheme"` |
+| `lang` | 언어 | `"en"`, `"ko"`, `"ja"`, `"zh-CN"` 등 |
+
+:::tip
+대부분의 경우 `mapping = "pathname"`을 사용하세요. URL 경로를 기반으로 각 포스트를 Discussion에 매핑합니다.
+:::
+
 ## 다음 단계
 
 - [포스트 작성](/girok-md/ko/guides/writing-posts) - 포스트 작성 방법

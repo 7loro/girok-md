@@ -107,6 +107,68 @@ your-blog/
 └── ...
 ```
 
+## Comments
+
+Enable comments on your blog posts using [Giscus](https://giscus.app), a comments system powered by GitHub Discussions.
+
+### Setup
+
+1. **Enable GitHub Discussions** on your repository:
+   - Go to your repository → Settings → General → Features
+   - Check "Discussions"
+
+2. **Install the Giscus app**:
+   - Visit [github.com/apps/giscus](https://github.com/apps/giscus)
+   - Click "Install" and select your repository
+
+3. **Generate your configuration**:
+   - Go to [giscus.app](https://giscus.app)
+   - Fill in your repository details
+   - Copy the generated values
+
+4. **Update `setting.toml`**:
+
+```toml title="setting.toml"
+[comments]
+enabled = true
+provider = "giscus"
+
+[comments.giscus]
+repo = "username/repo"
+repo_id = "R_kgDOxxxxxx"
+category = "Announcements"
+category_id = "DIC_kwDOxxxxxx"
+mapping = "pathname"
+strict = "0"
+reactions_enabled = "1"
+emit_metadata = "0"
+input_position = "top"
+theme = "preferred_color_scheme"
+lang = "en"
+```
+
+### Configuration Options
+
+| Option | Description | Values |
+|--------|-------------|--------|
+| `enabled` | Enable/disable comments | `true` / `false` |
+| `provider` | Comment system provider | `"giscus"` |
+| `repo` | GitHub repository | `"username/repo"` |
+| `repo_id` | Repository ID from giscus.app | `"R_kgDOxxxxxx"` |
+| `category` | Discussion category name | `"Announcements"`, `"General"`, etc. |
+| `category_id` | Category ID from giscus.app | `"DIC_kwDOxxxxxx"` |
+| `mapping` | How to map posts to discussions | `"pathname"`, `"url"`, `"title"`, `"og:title"` |
+| `strict` | Strict title matching | `"0"` (off) / `"1"` (on) |
+| `reactions_enabled` | Enable reactions | `"0"` (off) / `"1"` (on) |
+| `emit_metadata` | Emit discussion metadata | `"0"` (off) / `"1"` (on) |
+| `input_position` | Comment input position | `"top"` / `"bottom"` |
+| `theme` | Color theme | `"light"`, `"dark"`, `"preferred_color_scheme"` |
+| `lang` | Language | `"en"`, `"ko"`, `"ja"`, `"zh-CN"`, etc. |
+
+:::tip
+Use `mapping = "pathname"` for most cases. This maps each post to a discussion based on its URL path.
+:::
+
 ## Next Steps
 
 - [Writing Posts](/girok-md/guides/writing-posts) - Learn how to write posts
