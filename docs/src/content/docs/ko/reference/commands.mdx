@@ -13,6 +13,7 @@ girok-md에서 사용 가능한 모든 명령어 레퍼런스입니다.
 | `npm run build` | 프로덕션 빌드 |
 | `npm run preview` | 로컬에서 프로덕션 빌드 미리보기 |
 | `npm run sync` | 소스 폴더에서 포스트 동기화 |
+| `npm run translate` | 포스트를 대상 언어로 번역 |
 | `npm run clean` | 동기화된 포스트 정리 |
 | `npm test` | 테스트 실행 |
 
@@ -90,6 +91,43 @@ npm run clean
 다음 항목을 정리합니다:
 - `src/content/posts/`
 - `public/assets/` (동기화된 이미지만)
+
+## 번역
+
+### `npm run translate`
+
+동기화된 포스트를 설정된 대상 언어로 번역합니다.
+
+```bash
+npm run translate
+```
+
+**동작:**
+- `setting.toml`에서 번역 설정 읽기
+- 각 포스트의 소스 언어 자동 감지
+- 설정된 모든 `target_langs`로 번역
+- 언어 접미사가 붙은 번역 포스트 저장 (예: `post_ko.md`)
+- 이미 번역된 포스트는 건너뜀 (증분 번역)
+
+**옵션:**
+
+```bash
+# 모든 포스트 강제 재번역
+npm run translate -- --force
+
+# 특정 포스트만 번역
+npm run translate -- --slug my-post-title
+
+# 옵션 조합
+npm run translate -- -f -s my-post-title
+```
+
+| 옵션 | 설명 |
+|------|------|
+| `--force`, `-f` | 이미 번역된 포스트도 다시 번역 |
+| `--slug <slug>`, `-s <slug>` | 특정 포스트만 번역 |
+
+자세한 설정은 [포스트 번역](/girok-md/ko/guides/translation)을 참조하세요.
 
 ## 테스트
 

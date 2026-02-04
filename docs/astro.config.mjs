@@ -42,6 +42,7 @@ export default defineConfig({
           items: [
             { label: 'Writing Posts', slug: 'guides/writing-posts', translations: { ko: '포스트 작성' } },
             { label: 'Markdown Syntax', slug: 'guides/markdown-syntax', translations: { ko: '마크다운 문법' } },
+            { label: 'Post Translation', slug: 'guides/translation', translations: { ko: '포스트 번역' } },
             { label: 'Deployment', slug: 'guides/deployment', translations: { ko: '배포' } },
           ],
         },

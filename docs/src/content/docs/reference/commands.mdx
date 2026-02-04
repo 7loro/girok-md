@@ -13,6 +13,7 @@ Reference for all available commands in girok-md.
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build locally |
 | `npm run sync` | Sync posts from source folder |
+| `npm run translate` | Translate posts to target languages |
 | `npm run clean` | Clean synced posts |
 | `npm test` | Run tests |
 
@@ -90,6 +91,43 @@ npm run clean
 This clears:
 - `src/content/posts/`
 - `public/assets/` (synced images only)
+
+## Translation
+
+### `npm run translate`
+
+Translates synced posts to configured target languages.
+
+```bash
+npm run translate
+```
+
+**Behavior:**
+- Reads translation settings from `setting.toml`
+- Detects source language of each post automatically
+- Translates to all configured `target_langs`
+- Saves translated posts with language suffix (e.g., `post_ko.md`)
+- Skips posts that are already translated (incremental)
+
+**Options:**
+
+```bash
+# Force re-translate all posts
+npm run translate -- --force
+
+# Translate specific post only
+npm run translate -- --slug my-post-title
+
+# Combine options
+npm run translate -- -f -s my-post-title
+```
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Re-translate all posts, even if already translated |
+| `--slug <slug>`, `-s <slug>` | Translate only a specific post |
+
+See [Post Translation](/girok-md/guides/translation) for detailed configuration.
 
 ## Testing
 

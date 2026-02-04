@@ -1,0 +1,189 @@
+---
+title: Post Translation
+description: Automatically translate your posts to multiple languages using AI or Google Translate
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+girok-md can automatically translate your posts to multiple languages, making your content accessible to a global audience.
+
+## Overview
+
+The translation feature:
+
+- **Auto-detects source language** from post content
+- **Translates title, summary, and body** automatically
+- **Supports incremental translation** - only translates new or updated posts
+- **Offers multiple providers** - Google Translate (free) or AI models (OpenAI, Anthropic, Google AI)
+
+## Configuration
+
+Enable translation in your `setting.toml`:
+
+```toml title="setting.toml"
+[posts.translate]
+# Enable translation feature
+enabled = true
+
+# Target languages to translate into
+# Uses ISO 639-1 codes: en, ko, ja, zh, es, fr, de, etc.
+target_langs = ["en", "ko"]
+```
+
+<Aside type="tip" title="Language Detection">
+girok-md automatically detects the source language of each post based on its content. Posts are translated to all target languages except the detected source language.
+</Aside>
+
+### Using AI Providers (Optional)
+
+For higher quality translations, configure an AI provider:
+
+```toml title="setting.toml"
+[posts.translate]
+enabled = true
+target_langs = ["en", "ko", "ja"]
+
+# AI Provider: "openai" | "anthropic" | "google"
+provider = "openai"
+
+# API Key (use environment variable for security)
+api_key = "${OPENAI_API_KEY}"
+
+# Model to use
+model = "gpt-4o-mini"
+```
+
+#### Supported Models
+
+| Provider | Models |
+|----------|--------|
+| OpenAI | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
+| Anthropic | `claude-sonnet-4-20250514`, `claude-3-5-haiku-20241022` |
+| Google AI | `gemini-1.5-pro`, `gemini-1.5-flash` |
+
+<Aside type="caution" title="API Costs">
+AI providers charge per token. For large blogs, consider using `gpt-4o-mini` or `gemini-1.5-flash` to reduce costs. If no provider is configured, Google Translate (free) is used automatically.
+</Aside>
+
+## Usage
+
+### Translate All Posts
+
+Run the translate command after syncing your posts:
+
+```bash
+# First, sync your posts
+npm run sync
+
+# Then translate
+npm run translate
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Re-translate all posts, even if already translated |
+| `--slug <slug>`, `-s <slug>` | Translate only a specific post |
+
+**Examples:**
+
+```bash
+# Force re-translate all posts
+npm run translate -- --force
+
+# Translate a specific post
+npm run translate -- --slug my-post-title
+
+# Combine options
+npm run translate -- -f -s my-post-title
+```
+
+## How It Works
+
+### Translation Process
+
+1. Scans `src/content/posts/` for source posts
+2. Detects the source language of each post
+3. Identifies posts missing translations for target languages
+4. Translates title, summary/description, and content
+5. Saves translated posts with language suffix
+
+### File Naming
+
+Translated posts are saved with a language suffix:
+
+| Original | Translated (Korean) | Translated (Japanese) |
+|----------|--------------------|-----------------------|
+| `my-post.md` | `my-post_ko.md` | `my-post_ja.md` |
+
+### Frontmatter Changes
+
+Translated posts include additional metadata:
+
+```yaml
+---
+title: 번역된 제목
+lang: ko
+translated_from: my-post
+translate_sync_at: 2024-01-15 10:30:00
+---
+```
+
+| Field | Description |
+|-------|-------------|
+| `lang` | Language code of this translation |
+| `translated_from` | Slug of the original post |
+| `translate_sync_at` | Timestamp of when translation was performed |
+
+## Language Detection
+
+girok-md automatically detects the source language by analyzing the content:
+
+| Language | Detection Method |
+|----------|-----------------|
+| Korean | Korean characters (한글) |
+| Japanese | Hiragana/Katakana characters |
+| Chinese | CJK ideographs (without Japanese) |
+| English | Latin alphabet (default fallback) |
+
+You can also explicitly set the language in frontmatter:
+
+```yaml
+---
+title: My Post
+lang: en
+---
+```
+
+## Best Practices
+
+1. **Run sync before translate** - Ensure posts are up-to-date
+2. **Review AI translations** - AI translations are good but may need minor edits
+3. **Use environment variables** - Never commit API keys to your repository
+4. **Start with free tier** - Test with Google Translate before paying for AI
+
+## Troubleshooting
+
+### Translation not running?
+
+- Check that `enabled = true` in `[posts.translate]`
+- Verify `target_langs` is configured
+- Run `npm run sync` first
+
+### API errors?
+
+- Verify your API key is correct
+- Check that the environment variable is set
+- Ensure you have API credits/quota available
+
+### Posts not being translated?
+
+- Translation already exists (use `--force` to re-translate)
+- Source language matches target language
+- Post not yet synced (run `npm run sync`)
+
+## Next Steps
+
+- [Writing Posts](/girok-md/guides/writing-posts) - Learn about post frontmatter
+- [Deployment](/girok-md/guides/deployment) - Deploy your multilingual blog

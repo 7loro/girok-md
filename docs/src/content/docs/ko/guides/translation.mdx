@@ -1,0 +1,189 @@
+---
+title: 포스트 번역
+description: AI 또는 Google 번역을 사용하여 포스트를 여러 언어로 자동 번역하기
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+girok-md는 포스트를 여러 언어로 자동 번역하여 전 세계 독자에게 콘텐츠를 제공할 수 있습니다.
+
+## 개요
+
+번역 기능:
+
+- **소스 언어 자동 감지** - 포스트 콘텐츠에서 언어를 자동으로 감지
+- **제목, 요약, 본문 번역** - 모든 주요 콘텐츠를 자동 번역
+- **증분 번역 지원** - 새로운 또는 업데이트된 포스트만 번역
+- **다양한 제공자** - Google 번역 (무료) 또는 AI 모델 (OpenAI, Anthropic, Google AI)
+
+## 설정
+
+`setting.toml`에서 번역을 활성화하세요:
+
+```toml title="setting.toml"
+[posts.translate]
+# 번역 기능 활성화
+enabled = true
+
+# 번역할 대상 언어
+# ISO 639-1 코드 사용: en, ko, ja, zh, es, fr, de 등
+target_langs = ["en", "ko"]
+```
+
+<Aside type="tip" title="언어 자동 감지">
+girok-md는 각 포스트의 콘텐츠를 분석하여 소스 언어를 자동으로 감지합니다. 포스트는 감지된 소스 언어를 제외한 모든 대상 언어로 번역됩니다.
+</Aside>
+
+### AI 제공자 사용 (선택 사항)
+
+더 높은 품질의 번역을 위해 AI 제공자를 설정하세요:
+
+```toml title="setting.toml"
+[posts.translate]
+enabled = true
+target_langs = ["en", "ko", "ja"]
+
+# AI 제공자: "openai" | "anthropic" | "google"
+provider = "openai"
+
+# API 키 (보안을 위해 환경 변수 사용)
+api_key = "${OPENAI_API_KEY}"
+
+# 사용할 모델
+model = "gpt-4o-mini"
+```
+
+#### 지원 모델
+
+| 제공자 | 모델 |
+|--------|------|
+| OpenAI | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
+| Anthropic | `claude-sonnet-4-20250514`, `claude-3-5-haiku-20241022` |
+| Google AI | `gemini-1.5-pro`, `gemini-1.5-flash` |
+
+<Aside type="caution" title="API 비용">
+AI 제공자는 토큰당 요금이 부과됩니다. 큰 블로그의 경우 `gpt-4o-mini` 또는 `gemini-1.5-flash`를 사용하여 비용을 절감하세요. 제공자가 설정되지 않으면 Google 번역 (무료)이 자동으로 사용됩니다.
+</Aside>
+
+## 사용법
+
+### 모든 포스트 번역
+
+포스트 동기화 후 번역 명령을 실행하세요:
+
+```bash
+# 먼저 포스트 동기화
+npm run sync
+
+# 그 다음 번역
+npm run translate
+```
+
+### 명령어 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--force`, `-f` | 이미 번역된 포스트도 다시 번역 |
+| `--slug <slug>`, `-s <slug>` | 특정 포스트만 번역 |
+
+**예시:**
+
+```bash
+# 모든 포스트 강제 재번역
+npm run translate -- --force
+
+# 특정 포스트만 번역
+npm run translate -- --slug my-post-title
+
+# 옵션 조합
+npm run translate -- -f -s my-post-title
+```
+
+## 작동 방식
+
+### 번역 프로세스
+
+1. `src/content/posts/`에서 소스 포스트 스캔
+2. 각 포스트의 소스 언어 감지
+3. 대상 언어에 대한 번역이 없는 포스트 식별
+4. 제목, 요약/설명, 콘텐츠 번역
+5. 언어 접미사가 붙은 번역 포스트 저장
+
+### 파일 명명 규칙
+
+번역된 포스트는 언어 접미사와 함께 저장됩니다:
+
+| 원본 | 번역 (한국어) | 번역 (일본어) |
+|------|--------------|--------------|
+| `my-post.md` | `my-post_ko.md` | `my-post_ja.md` |
+
+### Frontmatter 변경사항
+
+번역된 포스트에는 추가 메타데이터가 포함됩니다:
+
+```yaml
+---
+title: Translated Title
+lang: en
+translated_from: my-post
+translate_sync_at: 2024-01-15 10:30:00
+---
+```
+
+| 필드 | 설명 |
+|------|------|
+| `lang` | 이 번역의 언어 코드 |
+| `translated_from` | 원본 포스트의 슬러그 |
+| `translate_sync_at` | 번역 수행 시간 |
+
+## 언어 감지
+
+girok-md는 콘텐츠를 분석하여 소스 언어를 자동으로 감지합니다:
+
+| 언어 | 감지 방법 |
+|------|----------|
+| 한국어 | 한글 문자 |
+| 일본어 | 히라가나/가타카나 문자 |
+| 중국어 | CJK 한자 (일본어 제외) |
+| 영어 | 라틴 알파벳 (기본값) |
+
+frontmatter에서 언어를 명시적으로 설정할 수도 있습니다:
+
+```yaml
+---
+title: 내 포스트
+lang: ko
+---
+```
+
+## 모범 사례
+
+1. **번역 전 동기화 실행** - 포스트가 최신 상태인지 확인
+2. **AI 번역 검토** - AI 번역은 우수하지만 약간의 수정이 필요할 수 있음
+3. **환경 변수 사용** - API 키를 저장소에 커밋하지 마세요
+4. **무료 티어로 시작** - AI 결제 전에 Google 번역으로 테스트
+
+## 문제 해결
+
+### 번역이 실행되지 않나요?
+
+- `[posts.translate]`에서 `enabled = true` 확인
+- `target_langs`가 설정되어 있는지 확인
+- 먼저 `npm run sync` 실행
+
+### API 오류?
+
+- API 키가 올바른지 확인
+- 환경 변수가 설정되어 있는지 확인
+- API 크레딧/할당량이 있는지 확인
+
+### 포스트가 번역되지 않나요?
+
+- 번역이 이미 존재함 (`--force`로 재번역)
+- 소스 언어가 대상 언어와 동일
+- 포스트가 아직 동기화되지 않음 (`npm run sync` 실행)
+
+## 다음 단계
+
+- [포스트 작성](/girok-md/ko/guides/writing-posts) - 포스트 frontmatter 알아보기
+- [배포](/girok-md/ko/guides/deployment) - 다국어 블로그 배포하기
