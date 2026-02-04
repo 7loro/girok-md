@@ -1,10 +1,12 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   site: 'https://7loro.github.io',
   base: '/girok-md',
   integrations: [
+    sitemap(),
     starlight({
       title: 'girok-md',
       logo: {
