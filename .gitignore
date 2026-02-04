@@ -34,6 +34,10 @@ test-results/
 
 # Pagefind (generated at build time)
 public/pagefind/
+public
+
+# Posts (for test)
+src/content/posts
 
 # TypeScript
 *.tsbuildinfo
