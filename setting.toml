@@ -4,7 +4,7 @@
 
 # Markdown Source Path
 # Enter the absolute path to the folder containing markdown files to sync.
-source_root_path = "/Users/casper/pkm"
+source_root_path = "/source"
 
 # Blog Name
 # The name displayed in the site title and header.

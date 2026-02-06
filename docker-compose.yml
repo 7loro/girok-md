@@ -1,0 +1,19 @@
+# Docker Compose Configuration
+# Run the blog with a single command: docker compose up
+#
+# Before running, update the following:
+#   1. /path/to/your/markdown-folder → actual path to your markdown files
+#   2. setting.toml → edit blog name, URL, and other settings
+
+services:
+  blog:
+    build: .
+    ports:
+      # Host port 8080 → Container port 8080
+      # Access the blog at http://localhost:8080
+      - "8080:8080"
+    volumes:
+      # Markdown source folder (ro = read-only, original files are never modified)
+      - /path/to/your/markdown-folder:/source:ro
+      # Blog settings file
+      - ./setting.toml:/app/setting.toml:ro

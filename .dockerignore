@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.git/
+.claude/
+src/content/posts/
+public/assets/
+public/pagefind/
+coverage/
+test-results/
