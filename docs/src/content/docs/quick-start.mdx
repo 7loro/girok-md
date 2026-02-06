@@ -80,6 +80,51 @@ Get your blog up and running in just a few minutes.
 
 </Steps>
 
+## Quick Start with Docker
+
+Prefer Docker? You can easily run girok-md with **Docker Compose** in just 3 steps.
+
+<Steps>
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/7loro/girok-md.git
+   cd girok-md
+   ```
+
+2. **Configure your blog**
+
+   Edit the `setting.toml` file:
+
+   ```toml title="setting.toml"
+   # Mount path for markdown files inside the container
+   source_root_path = "/source"
+
+   # Blog name
+   blog_name = "My Blog"
+
+   # Site URL (for SEO)
+   site_url = "https://your-domain.com"
+
+   # Locale (en or ko)
+   locale = "en"
+   ```
+
+3. **Start with Docker Compose**
+
+   ```bash
+   docker compose up -d
+   ```
+
+   Visit [http://localhost:8080](http://localhost:8080) to see your blog!
+
+</Steps>
+
+:::note
+For advanced Docker options (custom builds, volume mounts, rebuild commands), see the [Docker Deployment Guide](/girok-md/guides/deployment#docker).
+:::
+
 ## Next Steps
 
 - [Configuration](/girok-md/configuration) - Learn about all configuration options

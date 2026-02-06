@@ -134,6 +134,82 @@ To use a custom domain:
   </TabItem>
 </Tabs>
 
+## Docker
+
+Run your blog in a Docker container. Just mount your markdown folder and `setting.toml` — the container handles syncing, building, and serving automatically.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed on your machine
+
+### Quick Start
+
+<Steps>
+
+1. **Set `source_root_path` in `setting.toml`**
+
+   The container mounts your markdown folder to `/source`, so the path must match:
+
+   ```toml title="setting.toml"
+   source_root_path = "/source"
+   ```
+
+2. **Build the Docker image**
+
+   ```bash
+   docker build -t girok-md .
+   ```
+
+3. **Run the container**
+
+   ```bash
+   docker run -d -p 8080:8080 \
+     -v /path/to/your/markdown-folder:/source:ro \
+     -v ./setting.toml:/app/setting.toml:ro \
+     girok-md
+   ```
+
+   - Replace `/path/to/your/markdown-folder` with the actual path to your markdown files
+   - `:ro` means read-only — your original files are never modified
+   - The blog will be available at `http://localhost:8080`
+
+</Steps>
+
+### Using Docker Compose
+
+For a simpler workflow, edit `docker-compose.yml` and run with a single command:
+
+```yaml title="docker-compose.yml"
+services:
+  blog:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - /path/to/your/markdown-folder:/source:ro
+      - ./setting.toml:/app/setting.toml:ro
+```
+
+```bash
+docker compose up -d
+```
+
+### How It Works
+
+The container runs through three steps on startup:
+
+1. **Sync** — copies markdown files from `/source` into the project
+2. **Build** — generates static HTML pages and search index
+3. **Serve** — starts Nginx to serve the built site on port 8080
+
+### Rebuilding After Content Changes
+
+The container builds the site once at startup. To pick up new or updated markdown files, restart the container:
+
+```bash
+docker compose down && docker compose up -d
+```
+
 ## Manual Deployment
 
 Build your site locally and upload to any static host:
