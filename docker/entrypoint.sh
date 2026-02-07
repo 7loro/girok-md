@@ -6,8 +6,15 @@ set -e
 # 1. Verify markdown source directory is mounted
 if [ ! -d "/source" ]; then
   echo "Error: /source directory not found."
-  echo "Mount your markdown folder:"
-  echo "  docker run -v /path/to/markdown-folder:/source:ro ..."
+  echo ""
+  echo "Please update docker-compose.yml with your markdown folder path:"
+  echo "  volumes:"
+  echo "    - /your/actual/path:/source:ro"
+  echo ""
+  echo "Example paths:"
+  echo "  macOS:   /Users/username/Documents/ObsidianVault"
+  echo "  Linux:   /home/username/Documents/ObsidianVault"
+  echo "  Windows: C:/Users/username/Documents/ObsidianVault"
   exit 1
 fi
 

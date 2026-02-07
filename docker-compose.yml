@@ -1,9 +1,10 @@
 # Docker Compose Configuration
 # Run the blog with a single command: docker compose up
 #
-# Before running, update the following:
-#   1. /path/to/your/markdown-folder → actual path to your markdown files
-#   2. setting.toml → edit blog name, URL, and other settings
+# IMPORTANT: Replace the volume path below with your actual markdown folder.
+#   macOS/Linux: /Users/username/Documents/ObsidianVault
+#   Windows:     C:/Users/username/Documents/ObsidianVault
+#   Linux:       /home/username/Documents/ObsidianVault
 
 services:
   blog:
