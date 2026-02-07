@@ -7,13 +7,13 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 몇 분 만에 블로그를 만들고 실행할 수 있습니다.
 
-## 사전 요구사항
+## 직접 실행
+
+### 사전 요구사항
 
 - [Node.js](https://nodejs.org/) v20 이상
 - [Git](https://git-scm.com/)
 - 마크다운 파일이 있는 폴더 (예: Obsidian vault)
-
-## 설치
 
 <Steps>
 
@@ -80,9 +80,15 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 </Steps>
 
-## Docker로 빠르게 시작하기
+## Docker로 시작하기
 
-**Docker Compose**로 girok-md를 간편하게 실행할 수 있습니다.
+### 사전 요구사항
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+- 마크다운 파일이 있는 폴더 (예: Obsidian vault)
+
+**Docker Compose**로 girok-md를 4단계로 간편하게 실행할 수 있습니다.
 
 <Steps>
 
@@ -93,25 +99,38 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
    cd girok-md
    ```
 
-2. **블로그 설정**
+2. **테스트용 마크다운 파일 준비**
 
-   `setting.toml` 파일을 수정합니다:
+   아무 폴더에 `publish: true` frontmatter가 포함된 마크다운 파일을 생성합니다:
 
-   ```toml title="setting.toml"
-   # 컨테이너 내부 마크다운 파일 마운트 경로
-   source_root_path = "/source"
+   ```bash
+   mkdir -p ~/my-posts
+   cat > ~/my-posts/hello.md << 'EOF'
+   ---
+   title: Hello World
+   publish: true
+   ---
 
-   # 블로그 이름
-   blog_name = "내 블로그"
-
-   # 사이트 URL (SEO용)
-   site_url = "https://your-domain.com"
-
-   # 언어 (en 또는 ko)
-   locale = "ko"
+   첫 번째 블로그 포스트입니다!
+   EOF
    ```
 
-3. **Docker Compose로 실행**
+3. **`docker-compose.yml` 볼륨 경로 수정**
+
+   `/path/to/your/markdown-folder`를 실제 마크다운 폴더 경로로 변경합니다:
+
+   ```yaml title="docker-compose.yml" {4}
+   volumes:
+     # 예시: ~/my-posts, /Users/me/ObsidianVault 등
+     - ~/my-posts:/source:ro
+     - ./setting.toml:/app/setting.toml:ro
+   ```
+
+   :::caution
+   이 단계는 필수입니다. 유효한 경로가 없으면 컨테이너가 시작되지 않습니다.
+   :::
+
+4. **Docker Compose로 실행**
 
    ```bash
    docker compose up -d

@@ -7,13 +7,13 @@ import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 
 Get your blog up and running in just a few minutes.
 
-## Prerequisites
+## Run Locally
+
+### Prerequisites
 
 - [Node.js](https://nodejs.org/) v20 or higher
 - [Git](https://git-scm.com/)
 - A folder with markdown files (e.g., Obsidian vault)
-
-## Installation
 
 <Steps>
 
@@ -82,7 +82,13 @@ Get your blog up and running in just a few minutes.
 
 ## Quick Start with Docker
 
-Prefer Docker? You can easily run girok-md with **Docker Compose** in just 3 steps.
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+- A folder with markdown files (e.g., Obsidian vault)
+
+Prefer Docker? You can run girok-md with **Docker Compose** in 4 steps.
 
 <Steps>
 
@@ -93,25 +99,38 @@ Prefer Docker? You can easily run girok-md with **Docker Compose** in just 3 ste
    cd girok-md
    ```
 
-2. **Configure your blog**
+2. **Prepare a test markdown file**
 
-   Edit the `setting.toml` file:
+   Create a markdown file with `publish: true` frontmatter in any folder:
 
-   ```toml title="setting.toml"
-   # Mount path for markdown files inside the container
-   source_root_path = "/source"
+   ```bash
+   mkdir -p ~/my-posts
+   cat > ~/my-posts/hello.md << 'EOF'
+   ---
+   title: Hello World
+   publish: true
+   ---
 
-   # Blog name
-   blog_name = "My Blog"
-
-   # Site URL (for SEO)
-   site_url = "https://your-domain.com"
-
-   # Locale (en or ko)
-   locale = "en"
+   My first blog post!
+   EOF
    ```
 
-3. **Start with Docker Compose**
+3. **Update the volume path in `docker-compose.yml`**
+
+   Replace `/path/to/your/markdown-folder` with your actual markdown folder path:
+
+   ```yaml title="docker-compose.yml" {4}
+   volumes:
+     # Example: ~/my-posts, /Users/me/ObsidianVault, etc.
+     - ~/my-posts:/source:ro
+     - ./setting.toml:/app/setting.toml:ro
+   ```
+
+   :::caution
+   This step is required. Without a valid path, the container will fail to start.
+   :::
+
+4. **Start with Docker Compose**
 
    ```bash
    docker compose up -d
