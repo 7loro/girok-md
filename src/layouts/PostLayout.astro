@@ -4,6 +4,7 @@ import TOC from '../components/TOC.astro';
 import Comments from '../components/Comments.astro';
 import ViewCount from '../components/ViewCount.astro';
 import { getTagStyle } from '../utils/tagColor';
+import { toAbsoluteUrl, withTrailingSlash } from '../utils/seo';
 import { t } from '../i18n';
 
 interface Heading {
@@ -20,7 +21,11 @@ interface Translation {
 interface Props {
   title: string;
   description?: string;
+  metaDescription?: string;
   date?: Date;
+  modified?: string;
+  image?: string;
+  author?: string;
   tags?: string[];
   headings?: Heading[];
   readingTime?: number;
@@ -29,27 +34,93 @@ interface Props {
   currentUrl?: string;
 }
 
-const { title, description, date, tags = [], headings = [], readingTime, lang, translations = [], currentUrl } = Astro.props;
-
-const siteUrl = import.meta.env.SITE_URL || '';
-const alternateUrls = [
-  ...(lang && currentUrl ? [{ lang, url: `${siteUrl}${currentUrl}` }] : []),
-  ...translations.map(t => ({ lang: t.lang, url: `${siteUrl}${t.url}` })),
-];
+const {
+  title,
+  description,
+  metaDescription,
+  date,
+  modified,
+  image,
+  author,
+  tags = [],
+  headings = [],
+  readingTime,
+  lang,
+  translations = [],
+  currentUrl,
+} = Astro.props;
 
 const base = import.meta.env.BASE_URL;
 const currentPath = Astro.url.pathname;
 const baseUrl = base.endsWith('/') ? base : `${base}/`;
 const dateLocale = t('dateLocale');
+const blogName = import.meta.env.BLOG_NAME || 'My Blog';
+const defaultLocale = import.meta.env.LOCALE || 'en';
+
+const toAbs = (path: string): string => toAbsoluteUrl(path, Astro.site);
+
+// All language versions (current + translations) for hreflang, absolute URLs.
+const allVersions = [
+  ...(lang && currentUrl ? [{ lang, url: currentUrl }] : []),
+  ...translations.map((tr) => ({ lang: tr.lang, url: tr.url })),
+];
+const alternateUrls = allVersions.map((v) => ({ lang: v.lang, url: toAbs(withTrailingSlash(v.url)) }));
+const xDefaultEntry = allVersions.find((v) => v.lang === defaultLocale) ?? allVersions[0];
+const xDefaultUrl = xDefaultEntry ? toAbs(withTrailingSlash(xDefaultEntry.url)) : undefined;
+
+// Use the live pathname so JSON-LD @id matches BaseLayout's canonical <link>.
+const canonicalURL = toAbs(currentPath);
+const absoluteImage = image ? toAbs(image) : undefined;
+const publishedTime = date ? date.toISOString() : undefined;
+const modifiedTime = modified ?? publishedTime;
 
 const formattedDate = date ? new Intl.DateTimeFormat(dateLocale, {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
 }).format(date) : null;
+
+// Structured data: article (BlogPosting) + breadcrumb trail.
+const blogPosting: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  ...(metaDescription ? { description: metaDescription } : {}),
+  ...(absoluteImage ? { image: absoluteImage } : {}),
+  ...(publishedTime ? { datePublished: publishedTime } : {}),
+  ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+  ...(author ? { author: { '@type': 'Person', name: author } } : {}),
+  publisher: { '@type': 'Organization', name: blogName },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalURL },
+  inLanguage: lang ?? defaultLocale,
+  ...(tags.length > 0 ? { keywords: tags.join(', ') } : {}),
+};
+
+const breadcrumb: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: blogName, item: toAbs(baseUrl) },
+    { '@type': 'ListItem', position: 2, name: t('posts'), item: toAbs(withTrailingSlash(`${baseUrl}posts`)) },
+    { '@type': 'ListItem', position: 3, name: title, item: canonicalURL },
+  ],
+};
 ---
 
-<BaseLayout title={title} description={description} alternateUrls={alternateUrls}>
+<BaseLayout
+  title={title}
+  description={metaDescription ?? description}
+  type="article"
+  lang={lang}
+  image={absoluteImage}
+  author={author}
+  tags={tags}
+  publishedTime={publishedTime}
+  modifiedTime={modifiedTime}
+  alternateUrls={alternateUrls}
+  xDefaultUrl={xDefaultUrl}
+  jsonLd={[blogPosting, breadcrumb]}
+>
   <!-- TOC 사이드바 -->
   <TOC headings={headings} />
   
