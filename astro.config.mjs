@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import { parse } from 'smol-toml';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import matter from 'gray-matter';
@@ -14,12 +14,15 @@ const settings = parse(settingContent);
 // Build slug → date mapping table from post markdown files
 const postsDir = join(__dirname, 'src/content/posts');
 const postDateMap = new Map();
-for (const file of readdirSync(postsDir).filter(f => f.endsWith('.md'))) {
-  const content = readFileSync(join(postsDir, file), 'utf-8');
-  const { data } = matter(content);
-  if (data.date && data.publish) {
-    const slug = file.replace(/\.md$/, '');
-    postDateMap.set(slug, new Date(data.date).toISOString());
+// Guard against a missing posts dir (fresh clone / before `npm run sync`).
+if (existsSync(postsDir)) {
+  for (const file of readdirSync(postsDir).filter(f => f.endsWith('.md'))) {
+    const content = readFileSync(join(postsDir, file), 'utf-8');
+    const { data } = matter(content);
+    if (data.date && data.publish) {
+      const slug = file.replace(/\.md$/, '');
+      postDateMap.set(slug, new Date(data.date).toISOString());
+    }
   }
 }
 
