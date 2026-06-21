@@ -484,7 +484,7 @@ describe('image copy', () => {
     const slug = 'my-doc';
     const result = transformImagePaths(content, slug);
     expect(result).toContain('<figure>');
-    expect(result).toContain('<img src="/assets/my-doc/screenshot.png" alt="screenshot.png" width="500" />');
+    expect(result).toContain('<img src="/assets/my-doc/screenshot.png" alt="screenshot.png" width="500" loading="lazy" decoding="async" />');
     expect(result).toContain('</figure>');
   });
 
@@ -493,7 +493,7 @@ describe('image copy', () => {
     const slug = 'my-doc';
     const result = transformImagePaths(content, slug);
     expect(result).toContain('![first.png](/assets/my-doc/first.png)');
-    expect(result).toContain('<figure><img src="/assets/my-doc/second.jpg" alt="second.jpg" width="300" /></figure>');
+    expect(result).toContain('<figure><img src="/assets/my-doc/second.jpg" alt="second.jpg" width="300" loading="lazy" decoding="async" /></figure>');
   });
 
   it('should warn on missing images', () => {

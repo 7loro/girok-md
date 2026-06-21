@@ -28,9 +28,28 @@ if (!settings.site_url) {
   console.warn('   Please set site_url for SEO. (e.g., site_url = "https://7loro.github.io")');
 }
 
+// rehype plugin: add native lazy-loading and async decoding to content images
+// (improves Core Web Vitals / LCP without changing markup).
+function rehypeImageAttrs() {
+  return (tree) => {
+    const visit = (node) => {
+      if (node.type === 'element' && node.tagName === 'img') {
+        node.properties = node.properties || {};
+        if (!('loading' in node.properties)) node.properties.loading = 'lazy';
+        if (!('decoding' in node.properties)) node.properties.decoding = 'async';
+      }
+      if (Array.isArray(node.children)) node.children.forEach(visit);
+    };
+    visit(tree);
+  };
+}
+
 export default defineConfig({
   site: settings.site_url,
   base: '/',
+  markdown: {
+    rehypePlugins: [rehypeImageAttrs],
+  },
   integrations: [
     sitemap({
       serialize(item) {

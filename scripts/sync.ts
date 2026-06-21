@@ -313,7 +313,7 @@ export function transformImagePaths(content: string, slug: string): string {
   return content.replace(imagePattern, (_match, filename: string, widthStr?: string) => {
     const width = widthStr ? parseInt(widthStr, 10) : undefined;
     if (width) {
-      return `\n\n<figure><img src="/assets/${slug}/${filename}" alt="${filename}" width="${width}" /></figure>\n\n`;
+      return `\n\n<figure><img src="/assets/${slug}/${filename}" alt="${filename}" width="${width}" loading="lazy" decoding="async" /></figure>\n\n`;
     }
     return `\n\n![${filename}](/assets/${slug}/${filename})\n\n`;
   });
