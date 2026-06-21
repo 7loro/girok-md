@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import PostLayout from '../../../layouts/PostLayout.astro';
 import { calculateReadingTime } from '../../../utils/readingTime';
 import { isDefaultLangPost, getBaseSlug, getPostLang, getTranslations, getPostUrl } from '../../../utils/i18nRouting';
+import { excerpt } from '../../../utils/seo';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -19,20 +20,28 @@ export async function getStaticPaths() {
 
 const { post, allPosts } = Astro.props;
 const { Content, headings } = await post.render();
-const { title, summary, date, tags, lang } = post.data;
+const { title, summary, date, tags, lang, image, author, modified } = post.data;
 const readingTime = calculateReadingTime(post.body);
 // 본문에 summary callout이 있으면 상단 description 표시 생략 (중복 방지)
 const hasSummaryCallout = post.body?.includes('callout-summary') ?? false;
+// 메타 description: summary 우선, 없으면 본문에서 발췌
+const metaDescription = summary ?? excerpt(post.body);
+const intro = import.meta.env.INTRO || {};
+const resolvedAuthor = author ?? intro.name;
 const translations = getTranslations(allPosts, post);
 const base = import.meta.env.BASE_URL;
 const baseUrl = base.endsWith('/') ? base : `${base}/`;
 const currentUrl = getPostUrl(post, baseUrl);
 ---
 
-<PostLayout 
-  title={title} 
-  description={hasSummaryCallout ? undefined : summary} 
-  date={date} 
+<PostLayout
+  title={title}
+  description={hasSummaryCallout ? undefined : summary}
+  metaDescription={metaDescription}
+  date={date}
+  modified={modified}
+  image={image}
+  author={resolvedAuthor}
   tags={tags}
   headings={headings}
   readingTime={readingTime}

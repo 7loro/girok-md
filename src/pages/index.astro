@@ -21,9 +21,20 @@ const allPosts = await getCollection('posts');
 const recentPosts = getPostsForLocale(allPosts)
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
   .slice(0, 9);
+
+// 홈페이지 메타 description 및 WebSite 구조화 데이터
+const homepageDescription = introDescription.replace(/\n/g, ' ').trim();
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: blogName,
+  url: Astro.site?.href ?? '/',
+  description: homepageDescription,
+  inLanguage: import.meta.env.LOCALE || 'en',
+};
 ---
 
-<BaseLayout title={blogName}>
+<BaseLayout title={blogName} description={homepageDescription} jsonLd={websiteJsonLd}>
   <div class="container">
     <section class="intro">
       <div class="intro__decoration">
