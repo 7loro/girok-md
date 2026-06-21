@@ -66,6 +66,11 @@ export const en = {
 
   // View count
   views: 'views',
+
+  // 404
+  notFoundTitle: 'Page not found',
+  notFoundMessage: "The page you're looking for doesn't exist or has been moved.",
+  goHome: 'Go home',
 } as const;
 
 export type TranslationKey = keyof typeof en;

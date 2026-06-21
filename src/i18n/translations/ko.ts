@@ -68,4 +68,9 @@ export const ko: Record<TranslationKey, string> = {
 
   // View count
   views: '조회',
+
+  // 404
+  notFoundTitle: '페이지를 찾을 수 없습니다',
+  notFoundMessage: '찾으시는 페이지가 존재하지 않거나 이동되었습니다.',
+  goHome: '홈으로',
 };
