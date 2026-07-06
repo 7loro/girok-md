@@ -44,7 +44,13 @@ export default function Jobs(): JSX.Element {
       eventSourceRef.current = null;
       refresh();
     });
-    es.onerror = (): void => es.close();
+    es.onerror = (): void => {
+      if (eventSourceRef.current !== es) return;
+      es.close();
+      eventSourceRef.current = null;
+      setError('Log stream disconnected. Reopen the job from History to re-attach.');
+      refresh();
+    };
     eventSourceRef.current = es;
   }
 
@@ -55,6 +61,7 @@ export default function Jobs(): JSX.Element {
         type === 'sync' && sourcePath.trim().length > 0 ? { sourcePath: sourcePath.trim() } : undefined;
       const job = await api.startJob(type, options);
       watch(job);
+      refresh();
     } catch (e) {
       setError(e instanceof ApiError && e.status === 409 ? `Blocked: ${e.message}` : String(e));
     }

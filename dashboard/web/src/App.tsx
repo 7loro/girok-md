@@ -15,6 +15,12 @@ export default function App(): JSX.Element {
       .catch(() => setAuth('anon'));
   }, []);
 
+  useEffect(() => {
+    const onUnauthorized = (): void => setAuth('anon');
+    window.addEventListener('girok:unauthorized', onUnauthorized);
+    return (): void => window.removeEventListener('girok:unauthorized', onUnauthorized);
+  }, []);
+
   if (auth === 'loading') return <div className="p-10 font-bold">Loading…</div>;
   if (auth === 'anon')
     return <Login onSuccess={(): void => setAuth('authed')} />;

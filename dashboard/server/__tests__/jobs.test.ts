@@ -8,6 +8,7 @@ import { commandFor, createJobManager, JobLockError, type SpawnFn } from '../ser
 class FakeChild extends EventEmitter {
   stdout = new EventEmitter();
   stderr = new EventEmitter();
+  pid?: number;
   killSignals: Array<NodeJS.Signals | undefined> = [];
   // When true, kill() records the signal but does not terminate the child,
   // simulating a process that ignores SIGTERM.
@@ -177,6 +178,20 @@ describe('createJobManager', () => {
       expect(manager.get(job.id)!.status).toBe('canceled');
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it('should kill the whole process group when the child exposes a pid', () => {
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
+    try {
+      const { manager, children } = setup();
+      const job = manager.start('sync', {});
+      children[0].pid = 123;
+
+      expect(manager.cancel(job.id)).toBe(true);
+      expect(killSpy).toHaveBeenCalledWith(-123, 'SIGTERM');
+    } finally {
+      killSpy.mockRestore();
     }
   });
 });

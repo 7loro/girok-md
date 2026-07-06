@@ -78,6 +78,9 @@ async function request<T>(
     },
   });
   if (!res.ok) {
+    if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/me') {
+      window.dispatchEvent(new Event('girok:unauthorized'));
+    }
     const body = (await res
       .json()
       .catch(() => ({}))) as {

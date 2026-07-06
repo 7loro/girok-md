@@ -5,7 +5,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { streamSSE } from 'hono/streaming';
 import { parse } from 'smol-toml';
 import { verifyPassword, type LoginGuard, type SessionStore } from './auth.ts';
-import { scanDocuments, type DocStatus } from './services/docStatus.ts';
+import { scanDocuments, type DocEntry, type DocStatus } from './services/docStatus.ts';
 import { setPublishFlag } from './services/publishToggle.ts';
 import { updateTomlContent, type TomlValue } from './services/settingsFile.ts';
 import { JobLockError, type JobManager, type JobType } from './services/jobs.ts';
@@ -35,8 +35,25 @@ export function createApp(deps: AppDeps): Hono {
   const postsDir = join(deps.projectRoot, 'src', 'content', 'posts');
   const distDir = join(deps.projectRoot, 'dist');
 
+  // A full vault scan (parse + per-doc image search) is too slow to run on every request that
+  // touches doc status; cache the result briefly so a burst of requests (e.g. overview + docs
+  // loading together) reuses one scan.
+  let docsCache: { at: number; sourceRoot: string; docs: DocEntry[] } | null = null;
+  const DOCS_CACHE_TTL_MS = 3_000;
+
   function loadSettings(): SettingsShape {
     return parse(readFileSync(settingPath, 'utf-8')) as unknown as SettingsShape;
+  }
+
+  function getDocs(): { sourceRoot: string; docs: DocEntry[] } {
+    const settings = loadSettings();
+    const sourceRoot = resolve(settings.source_root_path);
+    const fresh =
+      docsCache && docsCache.sourceRoot === sourceRoot && Date.now() - docsCache.at < DOCS_CACHE_TTL_MS;
+    if (fresh) return { sourceRoot, docs: docsCache!.docs };
+    const docs = scanDocuments(sourceRoot, postsDir, distDir);
+    docsCache = { at: Date.now(), sourceRoot, docs };
+    return { sourceRoot, docs };
   }
 
   app.use('/api/*', async (c, next) => {
@@ -73,11 +90,7 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/auth/me', (c) => c.json({ ok: true }));
 
-  app.get('/api/docs', (c) => {
-    const settings = loadSettings();
-    const sourceRoot = resolve(settings.source_root_path);
-    return c.json({ sourceRoot, docs: scanDocuments(sourceRoot, postsDir, distDir) });
-  });
+  app.get('/api/docs', (c) => c.json(getDocs()));
 
   app.patch('/api/docs/publish', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { path?: string; publish?: boolean };
@@ -92,6 +105,9 @@ export function createApp(deps: AppDeps): Hono {
     }
     try {
       setPublishFlag(target, body.publish);
+      // The toggle changes scan results (draft/pending/etc.); drop the cache so the UI's
+      // post-toggle refresh reflects the new state instead of a stale cached scan.
+      docsCache = null;
       return c.json({ ok: true });
     } catch (error) {
       return c.json({ error: 'failed to update publish flag', detail: String(error) }, 500);
@@ -99,9 +115,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get('/api/overview', (c) => {
-    const settings = loadSettings();
-    const sourceRoot = resolve(settings.source_root_path);
-    const docs = scanDocuments(sourceRoot, postsDir, distDir);
+    const { docs } = getDocs();
     const counts: Record<DocStatus, number> = { draft: 0, pending: 0, synced: 0, built: 0, orphaned: 0 };
     for (const doc of docs) counts[doc.status] += 1;
     const jobs = deps.jobs.list();

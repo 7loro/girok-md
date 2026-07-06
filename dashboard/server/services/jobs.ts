@@ -28,9 +28,11 @@ export interface ChildLike {
   on(event: 'exit', cb: (code: number | null) => void): unknown;
   on(event: 'error', cb: (err: Error) => void): unknown;
   kill(signal?: NodeJS.Signals): boolean;
+  // Real children expose their OS pid; the fake used in tests has none.
+  pid?: number;
 }
 
-export type SpawnFn = (cmd: string, args: string[], opts: { cwd: string }) => ChildLike;
+export type SpawnFn = (cmd: string, args: string[], opts: { cwd: string; detached?: boolean }) => ChildLike;
 
 export class JobLockError extends Error {}
 
@@ -74,8 +76,25 @@ interface ActiveEntry {
   finalized: boolean;
 }
 
+// Kill a job's child process. `preview`/`build` are spawned via `npm run ...`, which forks a
+// shell that in turn execs astro — SIGKILL to the npm pid alone leaves the astro grandchild
+// running (orphaned on :4321). Spawning detached puts the child in its own process group, so
+// signaling the negative pid reaches the whole npm→sh→astro tree. Fall back to a plain kill()
+// for fakes (no pid) or if the group-kill fails (e.g. already dead, no such group).
+function killJob(child: ChildLike, signal: NodeJS.Signals): void {
+  if (typeof child.pid === 'number') {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch {
+      // Group kill failed (e.g. process/group already gone); fall back below.
+    }
+  }
+  child.kill(signal);
+}
+
 export function createJobManager(deps: { projectRoot: string; dataDir: string; spawnFn?: SpawnFn }): JobManager {
-  const spawnFn: SpawnFn = deps.spawnFn ?? ((cmd, args, opts) => spawn(cmd, args, opts));
+  const spawnFn: SpawnFn = deps.spawnFn ?? ((cmd, args, opts) => spawn(cmd, args, { cwd: opts.cwd, detached: true }));
   const historyPath = join(deps.dataDir, 'jobs.json');
   const active = new Map<string, ActiveEntry>();
   const canceled = new Set<string>();
@@ -220,7 +239,7 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
       const entry = active.get(id);
       if (!entry) return false;
       canceled.add(id);
-      entry.child.kill('SIGTERM');
+      killJob(entry.child, 'SIGTERM');
 
       // If the child already terminated synchronously in response to SIGTERM
       // (as fakes in tests do), there is nothing left to escalate.
@@ -228,7 +247,7 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
 
       const timer = setTimeout(() => {
         if (active.has(id)) {
-          entry.child.kill('SIGKILL');
+          killJob(entry.child, 'SIGKILL');
         }
       }, KILL_ESCALATION_MS);
       timer.unref();
