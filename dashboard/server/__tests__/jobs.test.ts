@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'events';
 import { mkdtempSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -8,7 +8,14 @@ import { commandFor, createJobManager, JobLockError, type SpawnFn } from '../ser
 class FakeChild extends EventEmitter {
   stdout = new EventEmitter();
   stderr = new EventEmitter();
-  kill(): boolean {
+  killSignals: Array<NodeJS.Signals | undefined> = [];
+  // When true, kill() records the signal but does not terminate the child,
+  // simulating a process that ignores SIGTERM.
+  ignoreKill = false;
+
+  kill(signal?: NodeJS.Signals): boolean {
+    this.killSignals.push(signal);
+    if (this.ignoreKill) return true;
     this.emit('exit', null);
     return true;
   }
@@ -91,5 +98,85 @@ describe('createJobManager', () => {
     manager.start('sync', {});
     children[0].emit('exit', 0);
     expect(() => manager.start('build', {})).not.toThrow();
+  });
+
+  it('should treat a spawn "error" event like a failed exit and release the lock', () => {
+    const { manager, children, dataDir } = setup();
+    const job = manager.start('sync', {});
+    children[0].emit('error', new Error('spawn ENOENT'));
+
+    const record = manager.get(job.id)!;
+    expect(record.status).toBe('failed');
+    expect(record.exitCode).toBeNull();
+    expect(record.logs).toContain('spawn ENOENT');
+
+    // Lock should be released so a new non-preview job can start.
+    expect(() => manager.start('build', {})).not.toThrow();
+
+    const saved = JSON.parse(readFileSync(join(dataDir, 'jobs.json'), 'utf-8')) as Array<{ id: string }>;
+    expect(saved.filter((r) => r.id === job.id)).toHaveLength(1);
+  });
+
+  it('should finalize only once when both "error" and "exit" fire for the same child', () => {
+    const { manager, children, dataDir } = setup();
+    const job = manager.start('sync', {});
+    children[0].emit('error', new Error('boom'));
+    children[0].emit('exit', 1);
+
+    expect(manager.get(job.id)!.status).toBe('failed');
+    const saved = JSON.parse(readFileSync(join(dataDir, 'jobs.json'), 'utf-8')) as Array<{ id: string }>;
+    expect(saved.filter((r) => r.id === job.id)).toHaveLength(1);
+  });
+
+  it('should isolate a throwing listener so other listeners and logging continue', () => {
+    const { manager, children } = setup();
+    const seen: string[] = [];
+    manager.onLog(() => {
+      throw new Error('listener boom');
+    });
+    manager.onLog((_id, line) => seen.push(line));
+    const job = manager.start('sync', {});
+
+    expect(() => children[0].stdout.emit('data', Buffer.from('a\nb\n'))).not.toThrow();
+    expect(manager.get(job.id)!.logs).toEqual(['a', 'b']);
+    expect(seen).toEqual(['a', 'b']);
+  });
+
+  it('should buffer a partial line split across chunks', () => {
+    const { manager, children } = setup();
+    const job = manager.start('sync', {});
+    children[0].stdout.emit('data', Buffer.from('hel'));
+    children[0].stdout.emit('data', Buffer.from('lo\nworld\n'));
+    expect(manager.get(job.id)!.logs).toEqual(['hello', 'world']);
+  });
+
+  it('should flush a trailing partial line without a newline on finalize', () => {
+    const { manager, children } = setup();
+    const job = manager.start('sync', {});
+    children[0].stdout.emit('data', Buffer.from('no newline at end'));
+    children[0].emit('exit', 0);
+    expect(manager.get(job.id)!.logs).toEqual(['no newline at end']);
+  });
+
+  it('should escalate to SIGKILL if the child ignores SIGTERM, then mark it canceled', () => {
+    vi.useFakeTimers();
+    try {
+      const { manager, children } = setup();
+      const job = manager.start('sync', {});
+      children[0].ignoreKill = true;
+
+      expect(manager.cancel(job.id)).toBe(true);
+      expect(children[0].killSignals).toEqual(['SIGTERM']);
+      expect(manager.get(job.id)!.status).toBe('running');
+
+      vi.advanceTimersByTime(5_000);
+      expect(children[0].killSignals).toEqual(['SIGTERM', 'SIGKILL']);
+
+      // Simulate the child actually dying in response to SIGKILL.
+      children[0].emit('exit', null);
+      expect(manager.get(job.id)!.status).toBe('canceled');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

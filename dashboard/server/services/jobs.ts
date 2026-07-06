@@ -26,6 +26,7 @@ export interface ChildLike {
   stdout: { on(event: 'data', cb: (chunk: Buffer | string) => void): unknown } | null;
   stderr: { on(event: 'data', cb: (chunk: Buffer | string) => void): unknown } | null;
   on(event: 'exit', cb: (code: number | null) => void): unknown;
+  on(event: 'error', cb: (err: Error) => void): unknown;
   kill(signal?: NodeJS.Signals): boolean;
 }
 
@@ -36,6 +37,8 @@ export class JobLockError extends Error {}
 const MAX_MEMORY_LOG_LINES = 2000;
 const MAX_PERSISTED_LOG_LINES = 500;
 const MAX_HISTORY = 50;
+// Grace period after SIGTERM before escalating to SIGKILL for an unresponsive child.
+const KILL_ESCALATION_MS = 5_000;
 
 export function commandFor(type: JobType, options: JobOptions): { cmd: string; args: string[] } {
   switch (type) {
@@ -61,10 +64,20 @@ export interface JobManager {
   onLog(cb: (jobId: string, line: string) => void): () => void;
 }
 
+// Bookkeeping kept alongside a running job's record and child handle.
+interface ActiveEntry {
+  record: JobRecord;
+  child: ChildLike;
+  pendingStdout: string;
+  pendingStderr: string;
+  killTimer: NodeJS.Timeout | null;
+  finalized: boolean;
+}
+
 export function createJobManager(deps: { projectRoot: string; dataDir: string; spawnFn?: SpawnFn }): JobManager {
   const spawnFn: SpawnFn = deps.spawnFn ?? ((cmd, args, opts) => spawn(cmd, args, opts));
   const historyPath = join(deps.dataDir, 'jobs.json');
-  const active = new Map<string, { record: JobRecord; child: ChildLike }>();
+  const active = new Map<string, ActiveEntry>();
   const canceled = new Set<string>();
   const listeners = new Set<(jobId: string, line: string) => void>();
 
@@ -83,15 +96,71 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
     writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
   }
 
-  function appendLog(record: JobRecord, chunk: Buffer | string): void {
-    for (const line of chunk.toString().split('\n')) {
-      if (line.length === 0) continue;
-      record.logs.push(line);
-      if (record.logs.length > MAX_MEMORY_LOG_LINES) {
-        record.logs.splice(0, record.logs.length - MAX_MEMORY_LOG_LINES);
+  // Notify listeners of a completed log line, isolating each callback so a
+  // throwing listener (e.g. a broken SSE subscriber) cannot break log processing
+  // for the job or for other listeners.
+  function notifyListeners(jobId: string, line: string): void {
+    for (const cb of listeners) {
+      try {
+        cb(jobId, line);
+      } catch {
+        // Swallow: a misbehaving listener must not affect other listeners or the job.
       }
-      for (const cb of listeners) cb(record.id, line);
     }
+  }
+
+  function recordLine(record: JobRecord, line: string): void {
+    if (line.length === 0) return;
+    record.logs.push(line);
+    if (record.logs.length > MAX_MEMORY_LOG_LINES) {
+      record.logs.splice(0, record.logs.length - MAX_MEMORY_LOG_LINES);
+    }
+    notifyListeners(record.id, line);
+  }
+
+  // Append a stream chunk, buffering any trailing partial line so a line split
+  // across two 'data' events is not recorded as two separate lines.
+  function appendChunk(entry: ActiveEntry, stream: 'stdout' | 'stderr', chunk: Buffer | string): void {
+    const pendingKey = stream === 'stdout' ? 'pendingStdout' : 'pendingStderr';
+    const text = entry[pendingKey] + chunk.toString();
+    const parts = text.split('\n');
+    entry[pendingKey] = parts.pop() ?? '';
+    for (const line of parts) {
+      recordLine(entry.record, line);
+    }
+  }
+
+  // Flush any buffered partial line (e.g. a final chunk without a trailing newline).
+  function flushPending(entry: ActiveEntry): void {
+    if (entry.pendingStdout.length > 0) {
+      recordLine(entry.record, entry.pendingStdout);
+      entry.pendingStdout = '';
+    }
+    if (entry.pendingStderr.length > 0) {
+      recordLine(entry.record, entry.pendingStderr);
+      entry.pendingStderr = '';
+    }
+  }
+
+  // Shared terminal bookkeeping for both the 'exit' and 'error' child events.
+  // Guarded so it runs at most once per job, since both events can fire for the same child.
+  function finalize(entry: ActiveEntry, status: JobStatus, exitCode: number | null): void {
+    if (entry.finalized) return;
+    entry.finalized = true;
+
+    if (entry.killTimer) {
+      clearTimeout(entry.killTimer);
+      entry.killTimer = null;
+    }
+
+    flushPending(entry);
+
+    entry.record.endedAt = new Date().toISOString();
+    entry.record.exitCode = exitCode;
+    entry.record.status = status;
+    canceled.delete(entry.record.id);
+    active.delete(entry.record.id);
+    persist(entry.record);
   }
 
   function runningOfKind(preview: boolean): JobRecord | undefined {
@@ -121,17 +190,28 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
       };
       const { cmd, args } = commandFor(type, options);
       const child = spawnFn(cmd, args, { cwd: deps.projectRoot });
-      active.set(record.id, { record, child });
+      const entry: ActiveEntry = {
+        record,
+        child,
+        pendingStdout: '',
+        pendingStderr: '',
+        killTimer: null,
+        finalized: false,
+      };
+      active.set(record.id, entry);
 
-      child.stdout?.on('data', (chunk) => appendLog(record, chunk));
-      child.stderr?.on('data', (chunk) => appendLog(record, chunk));
+      child.stdout?.on('data', (chunk) => appendChunk(entry, 'stdout', chunk));
+      child.stderr?.on('data', (chunk) => appendChunk(entry, 'stderr', chunk));
       child.on('exit', (code) => {
-        record.endedAt = new Date().toISOString();
-        record.exitCode = code;
-        record.status = canceled.has(record.id) ? 'canceled' : code === 0 ? 'succeeded' : 'failed';
-        canceled.delete(record.id);
-        active.delete(record.id);
-        persist(record);
+        const status: JobStatus = canceled.has(record.id) ? 'canceled' : code === 0 ? 'succeeded' : 'failed';
+        finalize(entry, status, code);
+      });
+      // A spawn-time failure (e.g. ENOENT) surfaces as an 'error' event, sometimes
+      // without a following 'exit'. Without this handler Node throws uncaught and
+      // the job's lock would never be released.
+      child.on('error', (err) => {
+        recordLine(entry.record, err.message);
+        finalize(entry, 'failed', null);
       });
 
       return record;
@@ -141,6 +221,18 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
       if (!entry) return false;
       canceled.add(id);
       entry.child.kill('SIGTERM');
+
+      // If the child already terminated synchronously in response to SIGTERM
+      // (as fakes in tests do), there is nothing left to escalate.
+      if (!active.has(id)) return true;
+
+      const timer = setTimeout(() => {
+        if (active.has(id)) {
+          entry.child.kill('SIGKILL');
+        }
+      }, KILL_ESCALATION_MS);
+      timer.unref();
+      entry.killTimer = timer;
       return true;
     },
     list(): JobRecord[] {
