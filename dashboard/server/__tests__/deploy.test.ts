@@ -49,6 +49,20 @@ describe('deploy status', () => {
     });
     expect((await service.status()).ahead).toBe(0);
   });
+
+  it('should parse renamed and copied files correctly', async () => {
+    const { service } = setup({
+      'rev-parse': 'main\n',
+      'status': 'R  old.md -> new.md\n M src/a.ts\nC  original.txt -> duplicate.txt\n',
+      'rev-list': '0\n',
+    });
+    const status = await service.status();
+    expect(status.changedFiles).toEqual([
+      { status: 'R', path: 'new.md' },
+      { status: 'M', path: 'src/a.ts' },
+      { status: 'C', path: 'duplicate.txt' },
+    ]);
+  });
 });
 
 describe('deploy', () => {
@@ -61,9 +75,8 @@ describe('deploy', () => {
     const record = await service.deploy('release: update');
     expect(record.ok).toBe(true);
     const gitArgs = calls.map((c) => c.args[0]);
-    expect(gitArgs).toContain('add');
-    expect(gitArgs).toContain('commit');
-    expect(gitArgs).toContain('push');
+    // Assert strict sequence of add, commit, push in deploy steps (last 3 calls after status reads)
+    expect(gitArgs.slice(-3)).toEqual(['add', 'commit', 'push']);
     expect(service.history()[0].message).toBe('release: update');
   });
 

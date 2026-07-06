@@ -83,7 +83,17 @@ export function createDeployService(deps: { projectRoot: string; dataDir: string
     const changedFiles = porcelain
       .split('\n')
       .filter((line) => line.trim().length > 0)
-      .map((line) => ({ status: line.slice(0, 2).trim(), path: line.slice(3) }));
+      .map((line) => {
+        const statusCode = line.slice(0, 2).trim();
+        let pathPart = line.slice(3);
+        // For renamed/copied files, git outputs "R  old.md -> new.md"
+        // Extract only the target path (after " -> ")
+        if ((statusCode === 'R' || statusCode === 'C') && pathPart.includes(' -> ')) {
+          const parts = pathPart.split(' -> ');
+          pathPart = parts[parts.length - 1];
+        }
+        return { status: statusCode, path: pathPart };
+      });
     let ahead = 0;
     try {
       const { stdout } = await git('rev-list', '--count', '@{u}..HEAD');
