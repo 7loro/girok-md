@@ -31,12 +31,17 @@ export default function Jobs(): JSX.Element {
     setActiveJob(job);
     setLogs([]);
     const es = new EventSource(`/api/jobs/${job.id}/stream`);
-    es.addEventListener('log', (e) => setLogs((prev) => [...prev, (e as MessageEvent<string>).data]));
-    es.addEventListener('done', (e) => {
+    es.addEventListener('log', (e): void => {
+      if (eventSourceRef.current !== es) return;
+      setLogs((prev) => [...prev, (e as MessageEvent<string>).data]);
+    });
+    es.addEventListener('done', (e): void => {
+      if (eventSourceRef.current !== es) return;
       setActiveJob((prev) =>
         prev ? { ...prev, status: (e as MessageEvent<string>).data as JobRecord['status'] } : prev,
       );
       es.close();
+      eventSourceRef.current = null;
       refresh();
     });
     es.onerror = (): void => es.close();
@@ -123,6 +128,8 @@ export default function Jobs(): JSX.Element {
               <button
                 className="w-full text-left flex gap-3 text-sm font-bold hover:bg-accent/10 px-2 py-1"
                 onClick={(): void => {
+                  eventSourceRef.current?.close();
+                  eventSourceRef.current = null;
                   setActiveJob(job);
                   setLogs(job.logs);
                   if (job.status === 'running') watch(job);
