@@ -1,3 +1,152 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api, ApiError, type JobRecord, type JobType } from '../api';
+import LogView from '../components/LogView';
+
+const JOB_TYPES: Array<{ type: JobType; label: string; hint: string }> = [
+  { type: 'sync', label: 'Sync', hint: 'Vault → posts' },
+  { type: 'translate', label: 'Translate', hint: 'Auto-translate posts' },
+  { type: 'build', label: 'Build', hint: 'astro build + pagefind' },
+  { type: 'preview', label: 'Preview', hint: 'Serve dist at :4321' },
+];
+
 export default function Jobs(): JSX.Element {
-  return <h2 className="text-2xl font-black">Jobs</h2>;
+  const [history, setHistory] = useState<JobRecord[]>([]);
+  const [sourcePath, setSourcePath] = useState('');
+  const [activeJob, setActiveJob] = useState<JobRecord | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const refresh = useCallback((): void => {
+    api.jobs().then(setHistory).catch((e: Error) => setError(e.message));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    return (): void => eventSourceRef.current?.close();
+  }, [refresh]);
+
+  function watch(job: JobRecord): void {
+    eventSourceRef.current?.close();
+    setActiveJob(job);
+    setLogs([]);
+    const es = new EventSource(`/api/jobs/${job.id}/stream`);
+    es.addEventListener('log', (e) => setLogs((prev) => [...prev, (e as MessageEvent<string>).data]));
+    es.addEventListener('done', (e) => {
+      setActiveJob((prev) =>
+        prev ? { ...prev, status: (e as MessageEvent<string>).data as JobRecord['status'] } : prev,
+      );
+      es.close();
+      refresh();
+    });
+    es.onerror = (): void => es.close();
+    eventSourceRef.current = es;
+  }
+
+  async function start(type: JobType): Promise<void> {
+    setError(null);
+    try {
+      const options =
+        type === 'sync' && sourcePath.trim().length > 0 ? { sourcePath: sourcePath.trim() } : undefined;
+      const job = await api.startJob(type, options);
+      watch(job);
+    } catch (e) {
+      setError(e instanceof ApiError && e.status === 409 ? `Blocked: ${e.message}` : String(e));
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-black">Jobs</h2>
+      {error && <p className="text-err font-bold">{error}</p>}
+
+      <div className="brutal p-4 space-y-4">
+        <div className="flex flex-wrap gap-3">
+          {JOB_TYPES.map((jt) => (
+            <button
+              key={jt.type}
+              className="brutal-btn"
+              onClick={(): void => void start(jt.type)}
+              title={jt.hint}
+            >
+              {jt.label}
+            </button>
+          ))}
+        </div>
+        <div>
+          <label className="text-sm font-bold block mb-1">
+            Source folder override (sync only — empty = setting.toml)
+          </label>
+          <input
+            className="brutal-input max-w-lg"
+            placeholder="/path/to/obsidian/vault"
+            value={sourcePath}
+            onChange={(e): void => setSourcePath(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {activeJob && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h3 className="font-black uppercase">{activeJob.type}</h3>
+            <span
+              className={`font-bold text-sm ${
+                activeJob.status === 'succeeded'
+                  ? 'text-ok'
+                  : activeJob.status === 'failed'
+                    ? 'text-err'
+                    : 'text-muted'
+              }`}
+            >
+              {activeJob.status}
+            </span>
+            {activeJob.status === 'running' && (
+              <button
+                className="brutal-btn-ghost text-sm"
+                onClick={(): void => void api.cancelJob(activeJob.id).then(refresh)}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+          <LogView lines={logs} />
+        </div>
+      )}
+
+      <div className="brutal p-4">
+        <h3 className="font-black mb-3">History</h3>
+        {history.length === 0 && <p className="text-sm text-muted">No jobs yet.</p>}
+        <ul className="space-y-1">
+          {history.map((job) => (
+            <li key={job.id}>
+              <button
+                className="w-full text-left flex gap-3 text-sm font-bold hover:bg-accent/10 px-2 py-1"
+                onClick={(): void => {
+                  setActiveJob(job);
+                  setLogs(job.logs);
+                  if (job.status === 'running') watch(job);
+                }}
+              >
+                <span className="uppercase w-20">{job.type}</span>
+                <span
+                  className={
+                    job.status === 'succeeded'
+                      ? 'text-ok'
+                      : job.status === 'failed'
+                        ? 'text-err'
+                        : 'text-muted'
+                  }
+                >
+                  {job.status}
+                </span>
+                <span className="text-muted">{new Date(job.startedAt).toLocaleString()}</span>
+                {job.options.sourcePath && <span className="text-muted truncate">({job.options.sourcePath})</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 }
