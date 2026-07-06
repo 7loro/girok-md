@@ -144,6 +144,20 @@ description: 포스트 설명 (선택)
 | `npm run sync` | 마크다운 폴더 동기화 |
 | `npm test` | 테스트 실행 |
 
+## 웹 대시보드
+
+블로그 파이프라인을 관리하는 로컬 전용 어드민 대시보드입니다.
+
+```bash
+cp .env.example .env   # DASHBOARD_PASSWORD 설정
+npm run dashboard      # UI 빌드 + 서버 실행 (http://127.0.0.1:4322)
+```
+
+기능: 문서 파이프라인 상태(draft → pending → synced → built), publish 플래그 토글,
+sync/translate/build/preview 실행과 실시간 로그(소스 폴더 지정 가능), 원클릭 git 배포, setting.toml 편집.
+
+대시보드 개발 시: `npm run dashboard:server` + `npm run dashboard:dev` (HMR, :4323).
+
 ## 배포
 
 ### GitHub Pages

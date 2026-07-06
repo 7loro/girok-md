@@ -19,6 +19,7 @@ npm run preview      # 프로덕션 빌드 미리보기
 npm run sync         # setting.toml의 source_root_path에서 마크다운 동기화
 npm run translate    # 포스트 자동 번역
 npm run clean        # 생성 파일 정리
+npm run dashboard    # 웹 대시보드 빌드 + 실행 (http://127.0.0.1:4322)
 npm test             # 전체 테스트 실행 (vitest, watch 모드)
 npx vitest run       # watch 없이 테스트 실행
 npx vitest run scripts/__tests__/sync.test.ts  # 단일 테스트 파일
@@ -53,6 +54,12 @@ npx vitest -t "should convert"                 # 테스트 이름 패턴 매칭
 ### 마크다운 처리 파이프라인
 
 `gray-matter` (프론트매터) → `remark-parse` → `remark-gfm` → `remark-obsidian` (위키링크 `[[doc]]`, 이미지 임베드 `![[img.png]]`, 콜아웃 `> [!NOTE]`) → `remark-rehype` → `rehype-stringify`.
+
+### 웹 대시보드
+
+`dashboard/`는 로컬 전용 CMS 어드민이다. `dashboard/server/`(Hono, 127.0.0.1:4322)가 API와 빌드된
+SPA(`dashboard/web/`, Vite+React)를 서빙한다. `.env`의 `DASHBOARD_PASSWORD`로 로그인한다.
+문서 상태 조회는 `scripts/sync.ts`의 export 함수를 재사용하고, CLI 실행은 spawn으로 기존 스크립트를 호출한다.
 
 ## 코드 컨벤션
 
