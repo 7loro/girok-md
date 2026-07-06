@@ -12,8 +12,8 @@ export default function Documents(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  function load(): void {
-    api
+  function load(): Promise<void> {
+    return api
       .docs()
       .then((res) => {
         setDocs(res.docs);
@@ -22,7 +22,7 @@ export default function Documents(): JSX.Element {
       .catch((e: Error) => setError(e.message));
   }
 
-  useEffect(load, []);
+  useEffect(() => { void load(); }, []);
 
   const visible = useMemo(() => {
     const q = query.toLowerCase();
@@ -43,7 +43,7 @@ export default function Documents(): JSX.Element {
     setError(null);
     try {
       await api.setPublish(doc.sourcePath, !doc.publish);
-      load();
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
