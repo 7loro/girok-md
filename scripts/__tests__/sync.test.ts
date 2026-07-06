@@ -18,6 +18,7 @@ import {
   cleanupUnusedImages,
   formatLocalDateTime,
   generateRobotsTxt,
+  parseCliArgs,
   type ParsedDocument,
   type PublishableDocument,
   type Settings,
@@ -907,5 +908,23 @@ describe('transformImagePaths - additional cases', () => {
     const content = 'text![[img.png]]text';
     const result = transformImagePaths(content, 'slug');
     expect(result).toContain('\n\n');
+  });
+});
+
+describe('parseCliArgs', () => {
+  it('should return empty object when no args', () => {
+    expect(parseCliArgs([])).toEqual({});
+  });
+
+  it('should parse --source with a path', () => {
+    expect(parseCliArgs(['--source', '/my/vault'])).toEqual({ source: '/my/vault' });
+  });
+
+  it('should ignore --source without a value', () => {
+    expect(parseCliArgs(['--source'])).toEqual({});
+  });
+
+  it('should ignore unknown args', () => {
+    expect(parseCliArgs(['--verbose', '--source', '/v'])).toEqual({ source: '/v' });
   });
 });

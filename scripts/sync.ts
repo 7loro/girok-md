@@ -723,6 +723,21 @@ export function saveRobotsTxt(siteUrl: string, projectRoot: string): void {
   writeFileSync(robotsPath, robotsContent, 'utf-8');
 }
 
+export interface CliArgs {
+  source?: string;
+}
+
+export function parseCliArgs(argv: string[]): CliArgs {
+  const args: CliArgs = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--source' && argv[i + 1]) {
+      args.source = argv[i + 1];
+      i++;
+    }
+  }
+  return args;
+}
+
 async function main() {
   let settings: Settings;
   try {
@@ -733,11 +748,12 @@ async function main() {
     process.exit(1);
   }
 
-  const sourcePath = settings.source_root_path;
+  const cliArgs = parseCliArgs(process.argv.slice(2));
+  const sourcePath = cliArgs.source ?? settings.source_root_path;
 
   if (!sourcePath) {
     console.error('❌ source_root_path is not configured.');
-    console.error('   Please check your setting.toml file.');
+    console.error('   Please check your setting.toml file or pass --source <path>.');
     process.exit(1);
   }
   
