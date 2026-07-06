@@ -22,7 +22,7 @@ export interface StatusInput {
 }
 
 export function deriveStatus(input: StatusInput): DocStatus {
-  if (!input.publishable) return 'draft';
+  if (!input.publishable) return input.inOutput ? 'orphaned' : 'draft';
   if (!input.inOutput || !input.upToDate) return 'pending';
   if (input.builtAt && input.lastSyncAt && input.builtAt.getTime() >= input.lastSyncAt.getTime()) {
     return 'built';
@@ -89,7 +89,10 @@ export function scanDocuments(sourceRoot: string, postsDir: string, distDir: str
 
   for (const doc of docs) {
     const publishable = isPublishable(doc);
-    if (publishable) sourceSlugs.add(doc.slug);
+    // Track every source slug (publishable or not) so the posts-dir scan below only flags
+    // docs whose source file is completely gone, not ones that still have a source but are
+    // unpublished — those are represented by this loop's own entry (status 'orphaned').
+    sourceSlugs.add(doc.slug);
 
     const syncCheck = publishable
       ? checkShouldSync(doc, postsDir)
@@ -120,15 +123,21 @@ export function scanDocuments(sourceRoot: string, postsDir: string, distDir: str
     });
   }
 
-  // Synced posts whose source is gone or unpublished — removed on next sync.
+  // Synced posts whose source file is entirely gone — removed on next sync.
   const translations = collectTranslations(postsDir);
   if (existsSync(postsDir)) {
     for (const file of readdirSync(postsDir).filter((f) => f.endsWith('.md'))) {
       const slug = basename(file, '.md');
       if (LANG_SUFFIX.test(slug)) continue;
       if (sourceSlugs.has(slug)) continue;
-      const raw = readFileSync(join(postsDir, file), 'utf-8');
-      const { data } = matter(raw);
+      // Skip files that fail to read or parse rather than crashing the whole scan.
+      let data: Record<string, unknown>;
+      try {
+        const raw = readFileSync(join(postsDir, file), 'utf-8');
+        data = matter(raw).data;
+      } catch {
+        continue;
+      }
       entries.push({
         slug,
         title: typeof data.title === 'string' ? data.title : slug,

@@ -14,7 +14,11 @@ function makeInput(overrides: Partial<StatusInput> = {}): StatusInput {
 
 describe('deriveStatus', () => {
   it('should be draft when not publishable', () => {
-    expect(deriveStatus(makeInput({ publishable: false }))).toBe('draft');
+    expect(deriveStatus(makeInput({ publishable: false, inOutput: false }))).toBe('draft');
+  });
+
+  it('should be orphaned when not publishable but still in output', () => {
+    expect(deriveStatus(makeInput({ publishable: false, inOutput: true }))).toBe('orphaned');
   });
 
   it('should be pending when publishable but not yet in output', () => {
@@ -40,6 +44,14 @@ describe('deriveStatus', () => {
   it('should be built when build is at or after the last sync', () => {
     const input = makeInput({
       builtAt: new Date('2026-07-03T00:00:00'),
+      lastSyncAt: new Date('2026-07-02T00:00:00'),
+    });
+    expect(deriveStatus(input)).toBe('built');
+  });
+
+  it('should be built when build time exactly equals the last sync time', () => {
+    const input = makeInput({
+      builtAt: new Date('2026-07-02T00:00:00'),
       lastSyncAt: new Date('2026-07-02T00:00:00'),
     });
     expect(deriveStatus(input)).toBe('built');
