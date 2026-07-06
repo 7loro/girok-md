@@ -38,5 +38,9 @@ public/pagefind/
 # TypeScript
 *.tsbuildinfo
 
+# Dashboard runtime data
+dashboard/.data/
+dashboard/web/dist/
+
 # AI
 .sisyphus
