@@ -38,6 +38,7 @@ export default function Shell({
           <button
             key={item.id}
             onClick={(): void => setPage(item.id)}
+            aria-current={page === item.id ? 'page' : undefined}
             className={`text-left font-bold px-3 py-2 border-[3px] ${
               page === item.id
                 ? 'brutal bg-accent text-white'

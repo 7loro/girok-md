@@ -45,7 +45,11 @@ export default function Login({
         <h1 className="text-2xl font-black">
           girok<span className="text-accent">.md</span> dashboard
         </h1>
+        <label htmlFor="password" className="sr-only">
+          Password
+        </label>
         <input
+          id="password"
           type="password"
           className="brutal-input"
           placeholder="Password"

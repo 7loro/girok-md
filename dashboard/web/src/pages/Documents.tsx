@@ -16,6 +16,7 @@ export default function Documents(): JSX.Element {
     return api
       .docs()
       .then((res) => {
+        setError(null);
         setDocs(res.docs);
         setSelected((prev) => (prev ? res.docs.find((d) => d.slug === prev.slug) ?? null : null));
       })
@@ -94,7 +95,16 @@ export default function Documents(): JSX.Element {
                 <tr
                   key={doc.slug}
                   onClick={(): void => setSelected(doc)}
-                  className={`border-b border-muted/30 cursor-pointer hover:bg-accent/10 ${
+                  onKeyDown={(e): void => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelected(doc);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={selected?.slug === doc.slug}
+                  className={`border-b border-muted/30 cursor-pointer hover:bg-accent/10 focus:outline focus:outline-2 focus:outline-accent ${
                     selected?.slug === doc.slug ? 'bg-accent/20' : ''
                   }`}
                 >

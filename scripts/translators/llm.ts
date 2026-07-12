@@ -61,12 +61,18 @@ Rules:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
+      // Truncate: provider error bodies can be huge and may echo request details.
+      const errorText = (await response.text()).slice(0, 200);
       throw new Error(`${this.provider} API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    return this.extractContent(data);
+    const content = this.extractContent(data);
+    if (!content) {
+      // An unexpected response shape must fail loudly instead of saving an empty translation.
+      throw new Error(`${this.provider} API returned an empty translation (unexpected response shape)`);
+    }
+    return content;
   }
 
   private getLanguageName(code: string): string {
@@ -125,9 +131,11 @@ Rules:
 
   private buildGoogleAIConfig(systemPrompt: string, userContent: string): LLMRequestConfig {
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+      // The key goes in a header, not the URL, so it cannot leak via error messages or logs.
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`,
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': this.apiKey,
       },
       body: {
         contents: [

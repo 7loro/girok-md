@@ -104,6 +104,8 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  /* Offset anchor jumps so headings clear the sticky header. */
+  scroll-padding-top: 6rem;
   overflow-y: scroll;
   visibility: visible;
 }
@@ -148,11 +150,14 @@ a {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
-  transition: background-color var(--transition-fast);
+  transition: text-decoration-color var(--transition-fast);
 }
 
+/* Keep the readable text color on hover and emphasize with the underline so
+   contrast holds on both light and dark backgrounds (accent is a light yellow). */
 a:hover {
-  color: var(--accent);
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 3px;
 }
 
 strong, b {
@@ -597,4 +602,23 @@ blockquote {
 
 [data-design-theme="glassmorphism"][data-theme="dark"] .tag {
   background-color: rgba(60, 60, 60, 0.4);
+}
+
+/* ============================================
+ * Reduced Motion (Accessibility)
+ * Respect users who prefer minimal animation.
+ * ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

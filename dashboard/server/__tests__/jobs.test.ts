@@ -181,6 +181,25 @@ describe('createJobManager', () => {
     }
   });
 
+  it('should notify exit listeners with the final status when a job ends', () => {
+    const { manager, children } = setup();
+    const seen: Array<{ id: string; status: string }> = [];
+    manager.onExit((id, status) => seen.push({ id, status }));
+    const job = manager.start('sync', {});
+    children[0].emit('exit', 0);
+    expect(seen).toEqual([{ id: job.id, status: 'succeeded' }]);
+  });
+
+  it('should notify exit listeners on a spawn error and only once', () => {
+    const { manager, children } = setup();
+    const seen: string[] = [];
+    manager.onExit((_id, status) => seen.push(status));
+    manager.start('sync', {});
+    children[0].emit('error', new Error('boom'));
+    children[0].emit('exit', 1);
+    expect(seen).toEqual(['failed']);
+  });
+
   it('should kill the whole process group when the child exposes a pid', () => {
     const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
     try {
@@ -190,6 +209,25 @@ describe('createJobManager', () => {
 
       expect(manager.cancel(job.id)).toBe(true);
       expect(killSpy).toHaveBeenCalledWith(-123, 'SIGTERM');
+    } finally {
+      killSpy.mockRestore();
+    }
+  });
+
+  it('should fall back to child.kill when the group kill fails', () => {
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw new Error('ESRCH');
+    });
+    try {
+      const { manager, children } = setup();
+      const job = manager.start('sync', {});
+      children[0].pid = 123;
+
+      expect(manager.cancel(job.id)).toBe(true);
+      // Group kill threw, so the plain child.kill path must have been used.
+      expect(children[0].killSignals).toEqual(['SIGTERM']);
+      // FakeChild.kill emits exit synchronously, so the job ends canceled.
+      expect(manager.get(job.id)!.status).toBe('canceled');
     } finally {
       killSpy.mockRestore();
     }

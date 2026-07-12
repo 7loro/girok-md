@@ -27,6 +27,7 @@ export default function Jobs(): JSX.Element {
   }, [refresh]);
 
   function watch(job: JobRecord): void {
+    setError(null);
     eventSourceRef.current?.close();
     setActiveJob(job);
     setLogs([]);
@@ -48,6 +49,13 @@ export default function Jobs(): JSX.Element {
       if (eventSourceRef.current !== es) return;
       es.close();
       eventSourceRef.current = null;
+      // EventSource failures bypass the fetch 401 interceptor in api.ts, so re-check
+      // the session and route an expired session to the login screen explicitly.
+      void api.me().catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          window.dispatchEvent(new Event('girok:unauthorized'));
+        }
+      });
       setError('Log stream disconnected. Reopen the job from History to re-attach.');
       refresh();
     };
@@ -116,12 +124,21 @@ export default function Jobs(): JSX.Element {
             {activeJob.status === 'running' && (
               <button
                 className="brutal-btn-ghost text-sm"
-                onClick={(): void => void api.cancelJob(activeJob.id).then(refresh)}
+                onClick={(): void => {
+                  // Optimistically flip status so the UI reflects the cancel immediately.
+                  setActiveJob((prev) => (prev ? { ...prev, status: 'canceled' } : prev));
+                  void api.cancelJob(activeJob.id).then(refresh);
+                }}
               >
                 Cancel
               </button>
             )}
           </div>
+          {activeJob.type === 'preview' && activeJob.status === 'running' && (
+            <p className="text-sm text-muted">
+              Preview server running at http://localhost:4321 — cancel to stop it.
+            </p>
+          )}
           <LogView lines={logs} />
         </div>
       )}
@@ -135,11 +152,16 @@ export default function Jobs(): JSX.Element {
               <button
                 className="w-full text-left flex gap-3 text-sm font-bold hover:bg-accent/10 px-2 py-1"
                 onClick={(): void => {
-                  eventSourceRef.current?.close();
-                  eventSourceRef.current = null;
-                  setActiveJob(job);
-                  setLogs(job.logs);
-                  if (job.status === 'running') watch(job);
+                  setError(null);
+                  if (job.status === 'running') {
+                    // watch() resets logs and re-attaches the stream; skip setLogs to avoid flicker.
+                    watch(job);
+                  } else {
+                    eventSourceRef.current?.close();
+                    eventSourceRef.current = null;
+                    setActiveJob(job);
+                    setLogs(job.logs);
+                  }
                 }}
               >
                 <span className="uppercase w-20">{job.type}</span>

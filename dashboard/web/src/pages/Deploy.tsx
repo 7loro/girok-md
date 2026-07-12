@@ -15,7 +15,9 @@ export default function Deploy(): JSX.Element {
     api.deployHistory().then(setHistory).catch(() => undefined);
   }, []);
 
-  useEffect(refresh, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function deploy(): Promise<void> {
     setBusy(true);

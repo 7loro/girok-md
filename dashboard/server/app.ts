@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, realpathSync, writeFileSync } from 'fs';
 import { join, resolve, sep } from 'path';
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
@@ -9,7 +9,7 @@ import { scanDocuments, type DocEntry, type DocStatus } from './services/docStat
 import { setPublishFlag } from './services/publishToggle.ts';
 import { updateTomlContent, type TomlValue } from './services/settingsFile.ts';
 import { JobLockError, type JobManager, type JobType } from './services/jobs.ts';
-import type { DeployService } from './services/deploy.ts';
+import { DeployLockError, type DeployService } from './services/deploy.ts';
 
 export const SESSION_COOKIE = 'girok_session';
 
@@ -90,18 +90,39 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/auth/me', (c) => c.json({ ok: true }));
 
-  app.get('/api/docs', (c) => c.json(getDocs()));
+  app.get('/api/docs', (c) => {
+    try {
+      return c.json(getDocs());
+    } catch (error) {
+      return c.json({ error: 'failed to load settings or scan documents', detail: String(error) }, 500);
+    }
+  });
 
   app.patch('/api/docs/publish', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { path?: string; publish?: boolean };
     if (typeof body.path !== 'string' || typeof body.publish !== 'boolean') {
       return c.json({ error: 'path and publish are required' }, 400);
     }
-    const settings = loadSettings();
-    const sourceRoot = resolve(settings.source_root_path);
+    let sourceRoot: string;
+    try {
+      sourceRoot = resolve(loadSettings().source_root_path);
+    } catch (error) {
+      return c.json({ error: 'failed to load settings', detail: String(error) }, 500);
+    }
     const target = resolve(body.path);
     if (!target.startsWith(sourceRoot + sep) || !target.endsWith('.md')) {
       return c.json({ error: 'path must be a markdown file inside the source root' }, 400);
+    }
+    // resolve() normalizes ".." but not symlinks: a link inside the vault can point
+    // at a file outside it. Compare canonical paths when the target exists.
+    try {
+      const realTarget = realpathSync(target);
+      const realRoot = realpathSync(sourceRoot);
+      if (!realTarget.startsWith(realRoot + sep)) {
+        return c.json({ error: 'path must be a markdown file inside the source root' }, 400);
+      }
+    } catch {
+      // Target does not exist; fall through and let setPublishFlag report it.
     }
     try {
       setPublishFlag(target, body.publish);
@@ -115,7 +136,12 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get('/api/overview', (c) => {
-    const { docs } = getDocs();
+    let docs: DocEntry[];
+    try {
+      ({ docs } = getDocs());
+    } catch (error) {
+      return c.json({ error: 'failed to load settings or scan documents', detail: String(error) }, 500);
+    }
     const counts: Record<DocStatus, number> = { draft: 0, pending: 0, synced: 0, built: 0, orphaned: 0 };
     for (const doc of docs) counts[doc.status] += 1;
     const jobs = deps.jobs.list();
@@ -161,33 +187,71 @@ export function createApp(deps: AppDeps): Hono {
     const job = deps.jobs.get(id);
     if (!job) return c.json({ error: 'job not found' }, 404);
     return streamSSE(c, async (stream) => {
-      for (const line of job.logs) {
-        await stream.writeSSE({ event: 'log', data: line });
-      }
+      // A client can disconnect at any moment; a rejected write must not become
+      // an unhandled rejection, so every SSE write swallows its own failure.
+      const writeLog = (line: string): Promise<void> =>
+        stream.writeSSE({ event: 'log', data: line }).catch(() => undefined);
+      const writeDone = (status: string): Promise<void> =>
+        stream.writeSSE({ event: 'done', data: status }).catch(() => undefined);
+
       if (job.status !== 'running') {
-        await stream.writeSSE({ event: 'done', data: job.status });
+        // Copy: the record's log array is mutated (trimmed) by the manager.
+        for (const line of [...job.logs]) await writeLog(line);
+        await writeDone(job.status);
         return;
       }
+
       await new Promise<void>((resolveWait) => {
-        const unsubscribe = deps.jobs.onLog((jobId, line) => {
-          if (jobId === id) void stream.writeSSE({ event: 'log', data: line });
+        // Subscribe before replaying the snapshot; live lines that arrive during
+        // replay are buffered so they are neither dropped nor interleaved.
+        let replaying = true;
+        let finished = false;
+        const buffered: string[] = [];
+        let exitStatus: string | null = null;
+
+        const cleanup = (): void => {
+          unsubscribeLog();
+          unsubscribeExit();
+        };
+        const finish = (status: string): void => {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          void writeDone(status).then(() => resolveWait());
+        };
+
+        const unsubscribeLog = deps.jobs.onLog((jobId, line) => {
+          if (jobId !== id || finished) return;
+          if (replaying) buffered.push(line);
+          else void writeLog(line);
         });
-        // Poll for terminal state: the exit handler runs outside this stream.
-        const timer = setInterval(() => {
-          const current = deps.jobs.get(id);
-          if (!current || current.status !== 'running') {
-            clearInterval(timer);
-            unsubscribe();
-            void stream
-              .writeSSE({ event: 'done', data: current ? current.status : 'failed' })
-              .then(() => resolveWait());
-          }
-        }, 500);
+        const unsubscribeExit = deps.jobs.onExit((jobId, status) => {
+          if (jobId !== id || finished) return;
+          if (replaying) exitStatus = status;
+          else finish(status);
+        });
         stream.onAbort(() => {
-          clearInterval(timer);
-          unsubscribe();
+          finished = true;
+          cleanup();
           resolveWait();
         });
+
+        const snapshot = [...job.logs];
+        void (async () => {
+          for (const line of snapshot) await writeLog(line);
+          while (buffered.length > 0) await writeLog(buffered.shift() as string);
+          replaying = false;
+          if (finished) return;
+          if (exitStatus !== null) {
+            finish(exitStatus);
+            return;
+          }
+          // The job may have ended before our exit listener was registered.
+          const current = deps.jobs.get(id);
+          if (!current || current.status !== 'running') {
+            finish(current ? current.status : 'failed');
+          }
+        })();
       });
     });
   });
@@ -205,12 +269,23 @@ export function createApp(deps: AppDeps): Hono {
     if (typeof body.message !== 'string' || body.message.trim().length === 0) {
       return c.json({ error: 'commit message is required' }, 400);
     }
-    return c.json(await deps.deployService.deploy(body.message.trim()));
+    try {
+      return c.json(await deps.deployService.deploy(body.message.trim()));
+    } catch (error) {
+      if (error instanceof DeployLockError) return c.json({ error: error.message }, 409);
+      return c.json({ error: 'deploy failed', detail: String(error) }, 500);
+    }
   });
 
   app.get('/api/deploy/history', (c) => c.json(deps.deployService.history()));
 
-  app.get('/api/settings', (c) => c.json(loadSettings()));
+  app.get('/api/settings', (c) => {
+    try {
+      return c.json(loadSettings());
+    } catch (error) {
+      return c.json({ error: 'failed to load settings', detail: String(error) }, 500);
+    }
+  });
 
   app.put('/api/settings', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as {

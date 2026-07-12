@@ -20,6 +20,10 @@ if (!password) {
   console.error('   Copy .env.example to .env and set your password.');
   process.exit(1);
 }
+if (password === 'change-me') {
+  console.warn('⚠️  DASHBOARD_PASSWORD is still the default value ("change-me").');
+  console.warn('   Set a unique password in .env before relying on dashboard auth.');
+}
 
 const dataDir = join(projectRoot, 'dashboard', '.data');
 const app = createApp({

@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { createTranslator } from './translators/index.ts';
 import type { Settings, TranslateSettings } from './sync.ts';
 import { formatLocalDateTime } from './sync.ts';
+import { formatYamlString } from './yamlUtils.ts';
 
 const settingPath = resolve(import.meta.dirname, '..', 'setting.toml');
 const postsDir = resolve(import.meta.dirname, '..', 'src', 'content', 'posts');
@@ -67,14 +68,16 @@ function loadSettings(): Settings & { locale?: string } {
   return parse(content) as unknown as Settings & { locale?: string };
 }
 
-function parsePostFile(filePath: string): PostFile | null {
+function parsePostFile(filePath: string, knownLangs?: string[]): PostFile | null {
   try {
     const raw = readFileSync(filePath, 'utf-8');
     const { data, content } = matter(raw);
     const filename = basename(filePath, '.md');
 
+    // Restrict the `_xx` suffix to configured languages so a filename like
+    // "notes_db.md" is not misclassified as a translation.
     const langMatch = filename.match(/^(.+)_([a-z]{2})$/);
-    if (langMatch) {
+    if (langMatch && (!knownLangs || knownLangs.includes(langMatch[2]))) {
       return {
         slug: langMatch[1],
         lang: langMatch[2],
@@ -95,7 +98,10 @@ function parsePostFile(filePath: string): PostFile | null {
       content,
       detectedLang,
     };
-  } catch {
+  } catch (error) {
+    // Surface the reason so silently skipped posts are debuggable.
+    const detail = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️  Skipping unreadable post ${filePath}: ${detail}`);
     return null;
   }
 }
@@ -179,13 +185,6 @@ interface TranslatedFrontmatterOptions {
   translatedSummary?: string;
 }
 
-function formatYamlString(value: string): string {
-  const needsQuotes = /[\n\r":#{}\[\]&*!|>'%@`]/.test(value) || value.length > 80;
-  if (!needsQuotes) return value;
-  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return `"${escaped}"`;
-}
-
 function generateTranslatedFrontmatter(
   originalFrontmatter: Record<string, unknown>,
   targetLang: string,
@@ -218,7 +217,7 @@ function generateTranslatedFrontmatter(
     if (Array.isArray(value)) {
       lines.push(`${key}:`);
       for (const item of value) {
-        lines.push(`  - ${item}`);
+        lines.push(`  - ${typeof item === 'string' ? formatYamlString(item) : String(item)}`);
       }
     } else if (value instanceof Date) {
       lines.push(`${key}: ${value.toISOString().split('T')[0]}`);
@@ -274,6 +273,7 @@ async function main() {
     settings = loadSettings();
   } catch (error) {
     console.error('❌ Failed to read setting.toml file.');
+    console.error(`   ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 
@@ -304,9 +304,10 @@ async function main() {
     process.exit(1);
   }
 
+  const knownLangs = [defaultLang, ...targetLangs];
   const postFiles = readdirSync(postsDir)
     .filter(f => f.endsWith('.md'))
-    .map(f => parsePostFile(join(postsDir, f)))
+    .map(f => parsePostFile(join(postsDir, f), knownLangs))
     .filter((p): p is PostFile => p !== null);
 
   console.log(`📚 Found ${postFiles.length} post files`);

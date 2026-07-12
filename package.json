@@ -1,13 +1,14 @@
 {
   "name": "girok-md",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "postbuild": "pagefind --site dist",
     "preview": "astro preview",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p dashboard/tsconfig.json && tsc --noEmit -p dashboard/web/tsconfig.json",
     "sync": "node scripts/sync.ts",
     "translate": "node scripts/translate.ts",
     "clean": "node scripts/clean.ts",
@@ -23,8 +24,11 @@
     "astro"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "description": "Your record becomes a map for others. Transform your markdown files into a beautiful blog.",
   "dependencies": {
     "@astrojs/sitemap": "^3.7.0",
@@ -47,7 +51,6 @@
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.3",
-    "playwright": "^1.58.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^4.3.2",

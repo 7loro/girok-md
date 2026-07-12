@@ -92,4 +92,12 @@ ${Array(200).fill('word').join(' ')}`;
   it('should correctly count mixed hangul jamo and syllables', () => {
     expect(calculateReadingTime('안녕하세요 반갑습니다 테스트입니다')).toBe(1);
   });
+
+  it('should count the last hangul syllable 힣 (U+D7A3) as korean text', () => {
+    // 250 space-separated 힣 land on the korean path: 250 / 500 = 0.5 min → 1.
+    // If 힣 were excluded from the korean range, they would be counted as
+    // 250 english words (250 / 200 = 1.25 min → 2), so this pins the upper bound.
+    const content = Array(250).fill('힣').join(' ');
+    expect(calculateReadingTime(content)).toBe(1);
+  });
 });

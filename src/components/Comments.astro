@@ -10,29 +10,9 @@ interface Props {
   title?: string;
 }
 
-interface GiscusConfig {
-  repo: string;
-  repo_id: string;
-  category: string;
-  category_id: string;
-  mapping: string;
-  strict: string;
-  reactions_enabled: string;
-  emit_metadata: string;
-  input_position: string;
-  theme: string;
-  lang: string;
-}
-
-interface CommentsConfig {
-  enabled: boolean;
-  provider: string;
-  giscus?: GiscusConfig;
-}
-
 const { title } = Astro.props;
 
-const comments = import.meta.env.COMMENTS as CommentsConfig;
+const comments = import.meta.env.COMMENTS;
 const isEnabled = comments?.enabled && comments?.provider === 'giscus';
 const giscus = comments?.giscus;
 const isConfigured = isEnabled && giscus?.repo && giscus?.repo_id && giscus?.category_id;

@@ -12,9 +12,9 @@ export function calculateReadingTime(content: string): number {
     .replace(/\n/g, ' ')
     .trim();
 
-  const koreanChars = (text.match(/[\u3131-\uD79D]/g) || []).length;
+  const koreanChars = (text.match(/[\u3131-\uD7A3]/g) || []).length;
   const englishWords = text
-    .replace(/[\u3131-\uD79D]/g, ' ')
+    .replace(/[\u3131-\uD7A3]/g, ' ')
     .split(/\s+/)
     .filter((word) => word.length > 0).length;
 

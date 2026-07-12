@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { createDeployService, type ExecFn } from '../services/deploy.ts';
+import { createDeployService, DeployLockError, type ExecFn } from '../services/deploy.ts';
 
 interface Call {
   cmd: string;
@@ -104,5 +104,61 @@ describe('deploy', () => {
     expect(record.ok).toBe(false);
     expect(record.error).toContain('remote rejected');
     expect(service.history()[0].ok).toBe(false);
+  });
+});
+
+describe('deploy concurrency lock', () => {
+  function setupSlowPush(): {
+    service: ReturnType<typeof createDeployService>;
+    nextPush: () => Promise<() => void>;
+  } {
+    const waiters: Array<(release: () => void) => void> = [];
+    const execFn: ExecFn = (_cmd, args) => {
+      if (args[0] === 'push') {
+        return new Promise((resolvePromise) => {
+          const release = (): void => resolvePromise({ stdout: '', stderr: '' });
+          const waiter = waiters.shift();
+          if (waiter) waiter(release);
+          else release();
+        });
+      }
+      if (args[0] === 'rev-parse') return Promise.resolve({ stdout: 'main\n', stderr: '' });
+      return Promise.resolve({ stdout: '', stderr: '' });
+    };
+    const dataDir = mkdtempSync(join(tmpdir(), 'girok-deploy-'));
+    const service = createDeployService({ projectRoot: '/proj', dataDir, execFn });
+    // Resolves once a push begins, yielding the function that completes that push.
+    const nextPush = (): Promise<() => void> => new Promise((resolvePromise) => waiters.push(resolvePromise));
+    return { service, nextPush };
+  }
+
+  it('should reject a second deploy while one is in flight', async () => {
+    const { service, nextPush } = setupSlowPush();
+    const pushStarted = nextPush();
+    const first = service.deploy('first');
+    const releasePush = await pushStarted; // first deploy is now mid-push
+    await expect(service.deploy('second')).rejects.toBeInstanceOf(DeployLockError);
+    releasePush();
+    expect((await first).ok).toBe(true);
+  });
+
+  it('should allow a new deploy after the previous one settles', async () => {
+    const { service } = setupSlowPush(); // pushes resolve immediately when un-awaited
+    expect((await service.deploy('first')).ok).toBe(true);
+    expect((await service.deploy('second')).ok).toBe(true);
+  });
+
+  it('should release the lock even when a deploy fails', async () => {
+    const { service } = setup({
+      'rev-parse': 'main\n',
+      'status': '',
+      'rev-list': '0\n',
+      'push': new Error('remote rejected'),
+    });
+    const failed = await service.deploy('will fail');
+    expect(failed.ok).toBe(false);
+    // The failed run must not leave the lock held.
+    const next = await service.deploy('retry');
+    expect(next.ok).toBe(false); // push still fails, but no DeployLockError
   });
 });

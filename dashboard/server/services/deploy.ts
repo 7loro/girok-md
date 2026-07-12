@@ -50,6 +50,8 @@ export interface DeployService {
   history(): DeployRecord[];
 }
 
+export class DeployLockError extends Error {}
+
 const MAX_HISTORY = 20;
 
 export function createDeployService(deps: { projectRoot: string; dataDir: string; execFn?: ExecFn }): DeployService {
@@ -104,9 +106,17 @@ export function createDeployService(deps: { projectRoot: string; dataDir: string
     return { branch: branchOut.trim(), changedFiles, ahead };
   }
 
+  // Concurrent deploys interleave git add/commit/push and can produce partial commits;
+  // allow only one in-flight deploy and reject the rest.
+  let deploying = false;
+
   return {
     status,
     async deploy(message: string): Promise<DeployRecord> {
+      if (deploying) {
+        throw new DeployLockError('A deploy is already in progress');
+      }
+      deploying = true;
       const record: DeployRecord = { at: new Date().toISOString(), message, ok: false, steps: [] };
       try {
         const current = await status();
@@ -122,6 +132,8 @@ export function createDeployService(deps: { projectRoot: string; dataDir: string
         record.ok = true;
       } catch (error) {
         record.error = error instanceof Error ? error.message : String(error);
+      } finally {
+        deploying = false;
       }
       persist(record);
       return record;

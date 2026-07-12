@@ -5,6 +5,7 @@ import Comments from '../components/Comments.astro';
 import ViewCount from '../components/ViewCount.astro';
 import { getTagStyle } from '../utils/tagColor';
 import { toAbsoluteUrl, withTrailingSlash } from '../utils/seo';
+import { getBaseUrl } from '../utils/base';
 import { t } from '../i18n';
 
 interface Heading {
@@ -50,9 +51,8 @@ const {
   currentUrl,
 } = Astro.props;
 
-const base = import.meta.env.BASE_URL;
 const currentPath = Astro.url.pathname;
-const baseUrl = base.endsWith('/') ? base : `${base}/`;
+const baseUrl = getBaseUrl();
 const dateLocale = t('dateLocale');
 const blogName = import.meta.env.BLOG_NAME || 'My Blog';
 const defaultLocale = import.meta.env.LOCALE || 'en';
@@ -64,7 +64,10 @@ const allVersions = [
   ...(lang && currentUrl ? [{ lang, url: currentUrl }] : []),
   ...translations.map((tr) => ({ lang: tr.lang, url: tr.url })),
 ];
-const alternateUrls = allVersions.map((v) => ({ lang: v.lang, url: toAbs(withTrailingSlash(v.url)) }));
+// Exclude versions with an unknown language so no `hreflang="unknown"` is emitted.
+const alternateUrls = allVersions
+  .filter((v) => v.lang && v.lang !== 'unknown')
+  .map((v) => ({ lang: v.lang, url: toAbs(withTrailingSlash(v.url)) }));
 const xDefaultEntry = allVersions.find((v) => v.lang === defaultLocale) ?? allVersions[0];
 const xDefaultUrl = xDefaultEntry ? toAbs(withTrailingSlash(xDefaultEntry.url)) : undefined;
 
@@ -78,6 +81,7 @@ const formattedDate = date ? new Intl.DateTimeFormat(dateLocale, {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
+  timeZone: 'UTC',
 }).format(date) : null;
 
 // Structured data: article (BlogPosting) + breadcrumb trail.

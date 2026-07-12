@@ -64,6 +64,7 @@ export interface JobManager {
   list(): JobRecord[];
   get(id: string): JobRecord | undefined;
   onLog(cb: (jobId: string, line: string) => void): () => void;
+  onExit(cb: (jobId: string, status: JobStatus) => void): () => void;
 }
 
 // Bookkeeping kept alongside a running job's record and child handle.
@@ -99,6 +100,7 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
   const active = new Map<string, ActiveEntry>();
   const canceled = new Set<string>();
   const listeners = new Set<(jobId: string, line: string) => void>();
+  const exitListeners = new Set<(jobId: string, status: JobStatus) => void>();
 
   function loadHistory(): JobRecord[] {
     try {
@@ -180,6 +182,14 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
     canceled.delete(entry.record.id);
     active.delete(entry.record.id);
     persist(entry.record);
+
+    for (const cb of exitListeners) {
+      try {
+        cb(entry.record.id, status);
+      } catch {
+        // Swallow: a misbehaving listener must not affect other listeners.
+      }
+    }
   }
 
   function runningOfKind(preview: boolean): JobRecord | undefined {
@@ -264,6 +274,10 @@ export function createJobManager(deps: { projectRoot: string; dataDir: string; s
     onLog(cb: (jobId: string, line: string) => void): () => void {
       listeners.add(cb);
       return () => listeners.delete(cb);
+    },
+    onExit(cb: (jobId: string, status: JobStatus) => void): () => void {
+      exitListeners.add(cb);
+      return () => exitListeners.delete(cb);
     },
   };
 }

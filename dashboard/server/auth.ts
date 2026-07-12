@@ -6,16 +6,40 @@ export interface SessionStore {
   destroy(token: string): void;
 }
 
-export function createSessionStore(): SessionStore {
-  const tokens = new Set<string>();
+export interface SessionStoreOptions {
+  ttlMs?: number;
+  maxSessions?: number;
+  now?: () => number;
+}
+
+const DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_MAX_SESSIONS = 100;
+
+export function createSessionStore(options: SessionStoreOptions = {}): SessionStore {
+  const ttlMs = options.ttlMs ?? DEFAULT_SESSION_TTL_MS;
+  const maxSessions = options.maxSessions ?? DEFAULT_MAX_SESSIONS;
+  const now = options.now ?? Date.now;
+  // Map preserves insertion order, so the first key is always the oldest session.
+  const tokens = new Map<string, number>();
+
   return {
     create(): string {
       const token = randomUUID();
-      tokens.add(token);
+      tokens.set(token, now());
+      while (tokens.size > maxSessions) {
+        const oldest = tokens.keys().next().value as string;
+        tokens.delete(oldest);
+      }
       return token;
     },
     has(token: string): boolean {
-      return tokens.has(token);
+      const createdAt = tokens.get(token);
+      if (createdAt === undefined) return false;
+      if (now() - createdAt > ttlMs) {
+        tokens.delete(token);
+        return false;
+      }
+      return true;
     },
     destroy(token: string): void {
       tokens.delete(token);

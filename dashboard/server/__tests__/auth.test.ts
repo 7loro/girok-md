@@ -15,6 +15,30 @@ describe('createSessionStore', () => {
     const store = createSessionStore();
     expect(store.has('nope')).toBe(false);
   });
+
+  it('should expire sessions after the ttl', () => {
+    let now = 1_000;
+    const store = createSessionStore({ ttlMs: 500, now: () => now });
+    const token = store.create();
+    expect(store.has(token)).toBe(true);
+    now = 1_499;
+    expect(store.has(token)).toBe(true);
+    now = 1_501;
+    expect(store.has(token)).toBe(false);
+  });
+
+  it('should evict the oldest session beyond the max session count', () => {
+    let now = 0;
+    const store = createSessionStore({ maxSessions: 2, now: () => now });
+    const first = store.create();
+    now = 1;
+    const second = store.create();
+    now = 2;
+    const third = store.create();
+    expect(store.has(first)).toBe(false);
+    expect(store.has(second)).toBe(true);
+    expect(store.has(third)).toBe(true);
+  });
 });
 
 describe('verifyPassword', () => {
