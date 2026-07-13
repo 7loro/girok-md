@@ -36,6 +36,8 @@
 - **GitHub Pages**: 원클릭 배포 지원
 - **댓글**: GitHub Discussions 기반 Giscus 댓글 시스템
 - **조회수**: GoatCounter 기반 프라이버시 친화적 페이지 조회수 추적
+- **다국어 (i18n)**: 영어/한국어 로케일 및 포스트 자동 번역
+- **웹 대시보드**: 문서 상태·마크다운 프리뷰·작업 로그·원클릭 배포를 갖춘 로컬 전용 어드민 UI
 
 ## 문서
 
@@ -127,6 +129,7 @@ description: 포스트 설명 (선택)
 │   │   └── posts/        # 동기화된 포스트 (자동 생성)
 │   ├── styles/           # 전역 CSS
 │   └── utils/            # 유틸리티
+├── dashboard/            # 로컬 어드민 대시보드 (Hono API + React SPA)
 ├── scripts/
 │   └── sync.ts           # 마크다운 동기화 스크립트
 ├── public/               # 정적 파일
@@ -142,6 +145,9 @@ description: 포스트 설명 (선택)
 | `npm run build` | 프로덕션 빌드 |
 | `npm run preview` | 빌드 결과 미리보기 |
 | `npm run sync` | 마크다운 폴더 동기화 |
+| `npm run translate` | 포스트 자동 번역 |
+| `npm run clean` | 생성 파일 정리 |
+| `npm run dashboard` | 웹 대시보드 빌드 + 실행 (127.0.0.1:4322) |
 | `npm test` | 테스트 실행 |
 
 ## 웹 대시보드
@@ -153,8 +159,13 @@ cp .env.example .env   # DASHBOARD_PASSWORD 설정
 npm run dashboard      # UI 빌드 + 서버 실행 (http://127.0.0.1:4322)
 ```
 
-기능: 문서 파이프라인 상태(draft → pending → synced → built), publish 플래그 토글,
-sync/translate/build/preview 실행과 실시간 로그(소스 폴더 지정 가능), 원클릭 git 배포, setting.toml 편집.
+기능:
+
+- 문서 파이프라인 상태(`draft` / `new` / `modified` / `synced` / `built` / `orphaned`)와 상태별 필터 개수 표시
+- 읽기 전용 마크다운 프리뷰: 문서를 선택하면 상태 정보와 렌더링된 본문(위키링크·이미지 임베드·콜아웃 변환 적용)이 함께 표시
+- 문서별 publish 플래그 토글
+- sync/translate/build/preview 실행과 실시간 로그(소스 폴더 지정 가능)
+- 원클릭 git 배포 및 setting.toml 편집
 
 대시보드 개발 시: `npm run dashboard:server` + `npm run dashboard:dev` (HMR, :4323).
 
@@ -162,62 +173,8 @@ sync/translate/build/preview 실행과 실시간 로그(소스 폴더 지정 가
 
 ### GitHub Pages
 
-저장소에 `.github/workflows/deploy.yml` 파일을 생성합니다:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-GitHub Pages 설정:
+템플릿에 배포 워크플로우(`.github/workflows/deploy.yml`, build → deploy → Discord 알림)가
+포함되어 있습니다. 활성화 방법:
 
 1. 저장소 이름을 `username.github.io` 형식으로 지정합니다 (아직 안 했다면)
 2. Repository **Settings > Pages > Source**에서 "GitHub Actions" 선택
@@ -225,6 +182,15 @@ GitHub Pages 설정:
 4. `https://username.github.io`에서 블로그 확인 가능
 
 이 워크플로우는 `main` 브랜치로 push할 때마다 자동으로 빌드하고 배포합니다. **Actions** 탭에서 수동으로 배포를 트리거할 수도 있습니다.
+
+### Discord 배포 알림 (선택)
+
+배포가 끝날 때마다 성공/실패 embed를 Discord 채널로 보낼 수 있습니다:
+
+1. Discord 채널에서 **채널 편집 > 연동 > 웹후크 > 새 웹후크**를 만들고 URL 복사
+2. 저장소 **Settings > Secrets and variables > Actions**에 `DISCORD_WEBHOOK_URL` 시크릿 등록
+
+시크릿이 없으면 알림 스텝은 조용히 건너뛰므로 설정하지 않아도 안전합니다.
 
 ### 수동 빌드
 

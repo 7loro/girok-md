@@ -38,6 +38,8 @@ Your notes are more than personal memos—they become a map that guides someone 
 - **GitHub Pages**: One-click deployment support
 - **Comments**: Giscus-powered comments via GitHub Discussions
 - **View Count**: Privacy-friendly page view tracking via GoatCounter
+- **Multilingual (i18n)**: English/Korean locales with automatic post translation
+- **Web Dashboard**: Local-only admin UI with document status, markdown preview, job logs, and one-click deploy
 
 ## Documentation
 
@@ -129,6 +131,7 @@ Write your content here.
 │   │   └── posts/        # Synced posts (auto-generated)
 │   ├── styles/           # Global CSS
 │   └── utils/            # Utilities
+├── dashboard/            # Local admin dashboard (Hono API + React SPA)
 ├── scripts/
 │   └── sync.ts           # Markdown sync script
 ├── public/               # Static files
@@ -144,6 +147,9 @@ Write your content here.
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build |
 | `npm run sync` | Sync from markdown folder |
+| `npm run translate` | Auto-translate posts |
+| `npm run clean` | Remove generated files |
+| `npm run dashboard` | Build and run the web dashboard (127.0.0.1:4322) |
 | `npm test` | Run tests |
 
 ## Web Dashboard
@@ -155,9 +161,14 @@ cp .env.example .env   # set DASHBOARD_PASSWORD
 npm run dashboard      # build UI + start server at http://127.0.0.1:4322
 ```
 
-Features: document pipeline status (draft → pending → synced → built), publish flag toggle,
-running sync/translate/build/preview with live logs (with an optional source folder override),
-one-click git deploy, and setting.toml editing.
+Features:
+
+- Document pipeline status (`draft` / `new` / `modified` / `synced` / `built` / `orphaned`) with per-status filter counts
+- Read-only markdown preview: selecting a document shows its status details and rendered content
+  (wikilinks, image embeds, and callouts applied) side by side
+- Publish flag toggle per document
+- Running sync/translate/build/preview with live logs (with an optional source folder override)
+- One-click git deploy and setting.toml editing
 
 For dashboard development: `npm run dashboard:server` + `npm run dashboard:dev` (HMR at :4323).
 
@@ -165,62 +176,8 @@ For dashboard development: `npm run dashboard:server` + `npm run dashboard:dev` 
 
 ### GitHub Pages
 
-Create `.github/workflows/deploy.yml` file in your repository:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-Then configure GitHub Pages:
+A ready-to-use workflow ships with the template at `.github/workflows/deploy.yml`
+(build → deploy → Discord notify). To enable it:
 
 1. Name your repository `username.github.io` (if you haven't already)
 2. Go to Repository **Settings > Pages > Source**: select "GitHub Actions"
@@ -228,6 +185,15 @@ Then configure GitHub Pages:
 4. Your blog will be available at `https://username.github.io`
 
 The workflow automatically builds and deploys your blog on every push to the `main` branch. You can also trigger deployment manually from the **Actions** tab.
+
+### Discord Deploy Notifications (optional)
+
+The deploy workflow can post a success/failure embed to a Discord channel after every deploy:
+
+1. In your Discord channel: **Edit Channel > Integrations > Webhooks > New Webhook**, copy the webhook URL
+2. In your repository: **Settings > Secrets and variables > Actions**, add a secret named `DISCORD_WEBHOOK_URL`
+
+Without the secret the notification step is skipped silently, so this is safe to leave unconfigured.
 
 ### Manual Build
 
