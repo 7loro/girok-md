@@ -1,5 +1,10 @@
 export type DocStatus = 'draft' | 'new' | 'modified' | 'synced' | 'built' | 'orphaned';
 
+export interface DocPreview {
+  title: string;
+  html: string;
+}
+
 export interface DocEntry {
   slug: string;
   title: string;
@@ -108,6 +113,8 @@ export const api = {
   overview: (): Promise<Overview> => request('/api/overview'),
   docs: (): Promise<{ sourceRoot: string; docs: DocEntry[] }> =>
     request('/api/docs'),
+  docPreview: (slug: string): Promise<DocPreview> =>
+    request(`/api/docs/${encodeURIComponent(slug)}/preview`),
   setPublish: (
     path: string,
     publish: boolean,
