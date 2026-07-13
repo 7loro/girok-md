@@ -1,27 +1,42 @@
 {
   "name": "girok-md",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "postbuild": "pagefind --site dist",
     "preview": "astro preview",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p dashboard/tsconfig.json && tsc --noEmit -p dashboard/web/tsconfig.json",
     "sync": "node scripts/sync.ts",
     "translate": "node scripts/translate.ts",
-    "clean": "node scripts/clean.ts"
+    "clean": "node scripts/clean.ts",
+    "dashboard": "npm run dashboard:build && node dashboard/server/index.ts",
+    "dashboard:build": "vite build dashboard/web",
+    "dashboard:server": "node dashboard/server/index.ts",
+    "dashboard:dev": "vite dashboard/web"
   },
-  "keywords": ["markdown", "blog", "static-site-generator", "astro"],
+  "keywords": [
+    "markdown",
+    "blog",
+    "static-site-generator",
+    "astro"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "description": "Your record becomes a map for others. Transform your markdown files into a beautiful blog.",
   "dependencies": {
     "@astrojs/sitemap": "^3.7.0",
+    "@hono/node-server": "^2.0.8",
     "@pagefind/default-ui": "^1.4.0",
     "astro": "^5.17.1",
     "gray-matter": "^4.0.3",
+    "hono": "^4.12.28",
     "pagefind": "^1.4.0",
     "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
@@ -32,7 +47,15 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
-    "playwright": "^1.58.1",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.3",
     "vitest": "^3.2.4"
   }
 }

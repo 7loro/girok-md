@@ -41,5 +41,14 @@ export function createTranslator(settings?: TranslateSettings): Translator {
     return new LLMTranslator(config.provider!, config.apiKey!, config.model!);
   }
 
+  // An LLM provider was configured but its env-referenced API key did not resolve;
+  // falling back silently would ship free translations where paid ones were expected.
+  const envMatch = settings.api_key?.match(/^\$\{(\w+)\}$/);
+  if (settings.provider && envMatch && !process.env[envMatch[1]]) {
+    console.warn(
+      `⚠️  Environment variable ${envMatch[1]} is not set; falling back to Google Translate (free).`,
+    );
+  }
+
   return new GoogleFreeTranslator();
 }

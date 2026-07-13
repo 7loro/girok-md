@@ -4,9 +4,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getTagStyle } from '../utils/tagColor';
 import { t } from '../i18n';
 import { getPostsForLocale, getPostUrl } from '../utils/i18nRouting';
+import { getBaseUrl } from '../utils/base';
 
-const base = import.meta.env.BASE_URL;
-const baseUrl = base.endsWith('/') ? base : `${base}/`;
+const baseUrl = getBaseUrl();
 const dateLocale = t('dateLocale');
 const blogName = import.meta.env.BLOG_NAME || 'My Blog';
 
@@ -37,16 +37,6 @@ const websiteJsonLd = {
 <BaseLayout title={blogName} description={homepageDescription} jsonLd={websiteJsonLd}>
   <div class="container">
     <section class="intro">
-      <div class="intro__decoration">
-        <div class="code-decoration animate-slide-up">
-          <span class="code-line"><span class="code-keyword">const</span> developer = {'{'}</span>
-          <span class="code-line code-indent"><span class="code-key">name</span>: <span class="code-string">"{introName}"</span>,</span>
-          <span class="code-line code-indent"><span class="code-key">role</span>: <span class="code-string">"{introRole}"</span>,</span>
-          <span class="code-line code-indent"><span class="code-key">passion</span>: <span class="code-boolean">true</span></span>
-          <span class="code-line">{'}'};</span>
-        </div>
-      </div>
-      
       <div class="intro__content animate-slide-up stagger-1">
         <h1 class="intro__greeting">
           {introGreeting}<br />
@@ -92,6 +82,7 @@ const websiteJsonLd = {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
+                      timeZone: 'UTC',
                     })}
                   </time>
                   {post.data.tags && post.data.tags.length > 0 && (
@@ -147,10 +138,6 @@ const websiteJsonLd = {
     observer.observe(postList);
     adjustPostCount();
   }
-  
-  document.addEventListener('astro:page-load', () => {
-    adjustPostCount();
-  });
 </script>
 
 <style>
@@ -162,10 +149,6 @@ const websiteJsonLd = {
     margin: 0 auto;
     padding: var(--spacing-3xl) var(--spacing-lg);
     margin-bottom: var(--spacing-2xl);
-  }
-
-  .intro__decoration {
-    display: none;
   }
 
   .intro__content {
@@ -234,45 +217,6 @@ const websiteJsonLd = {
   .intro-tag:hover {
     transform: translate(-2px, -2px);
     box-shadow: 2px 2px 0 var(--shadow-color);
-  }
-
-
-
-   /* Code decoration block */
-  .code-decoration {
-    font-family: var(--font-mono);
-    font-size: var(--font-size-sm);
-    background-color: var(--bg-secondary);
-    border: var(--border-width) solid var(--border-color);
-    box-shadow: 6px 6px 0 var(--shadow-color);
-    padding: var(--spacing-lg);
-    max-width: 320px;
-    line-height: 1.8;
-  }
-
-  .code-line {
-    display: block;
-  }
-
-  .code-indent {
-    padding-left: var(--spacing-lg);
-  }
-
-  .code-keyword {
-    color: var(--accent-pink);
-    font-weight: 600;
-  }
-
-  .code-key {
-    color: var(--accent-blue);
-  }
-
-  .code-string {
-    color: var(--accent-green);
-  }
-
-  .code-boolean {
-    color: var(--accent-orange);
   }
 
   /* ============================================
@@ -473,10 +417,6 @@ const websiteJsonLd = {
 
     .intro__tags {
       gap: var(--spacing-xs);
-    }
-
-    .tech-tag {
-      font-size: 0.65rem;
     }
   }
 </style>

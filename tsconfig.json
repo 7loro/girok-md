@@ -3,4 +3,5 @@
   "compilerOptions": {
     "jsxImportSource": "astro",
   },
+  "exclude": ["dashboard", "dist", "node_modules"],
 }

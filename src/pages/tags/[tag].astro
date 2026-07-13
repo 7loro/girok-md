@@ -1,8 +1,10 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getTagStyle } from '../../utils/tagColor';
 import { t } from '../../i18n';
 import { getPostsForLocale, getPostUrl } from '../../utils/i18nRouting';
+import { getBaseUrl } from '../../utils/base';
 
 export async function getStaticPaths() {
   const allPosts = await getCollection('posts');
@@ -32,15 +34,14 @@ export async function getStaticPaths() {
 }
 
 interface Props {
-  posts: any[];
+  posts: CollectionEntry<'posts'>[];
   originalTag: string;
 }
 
 const { tag } = Astro.params;
 const { posts, originalTag } = Astro.props;
 
-const base = import.meta.env.BASE_URL;
-const baseUrl = base.endsWith('/') ? base : `${base}/`;
+const baseUrl = getBaseUrl();
 const dateLocale = t('dateLocale');
 ---
 
@@ -66,6 +67,7 @@ const dateLocale = t('dateLocale');
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
+                    timeZone: 'UTC',
                   })}
                 </p>
                 {post.data.summary && (
@@ -73,9 +75,9 @@ const dateLocale = t('dateLocale');
                 )}
                 {post.data.tags && post.data.tags.length > 0 && (
                   <div class="post-card__tags">
-                   {post.data.tags.map((t: string) => (
-                       <a href={`${baseUrl}tags/${t.toLowerCase()}`} class="post-card__tag">
-                         {t}
+                   {post.data.tags.map((tag: string) => (
+                       <a href={`${baseUrl}tags/${tag.toLowerCase()}`} class="post-card__tag" style={getTagStyle(tag)}>
+                         {tag}
                        </a>
                      ))}
                   </div>
@@ -190,10 +192,8 @@ const dateLocale = t('dateLocale');
   .post-card__tag {
     display: inline-block;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background-color: var(--accent);
-    color: #000000;
     text-decoration: none;
-    border: var(--border-width) solid var(--border-color);
+    border: 2px solid;
     font-size: var(--font-size-sm);
     font-weight: 600;
     text-transform: lowercase;
@@ -202,6 +202,6 @@ const dateLocale = t('dateLocale');
 
   .post-card__tag:hover {
     transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0 var(--shadow-color);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
   }
 </style>

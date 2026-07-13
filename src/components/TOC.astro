@@ -265,9 +265,6 @@ const filteredHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
     }
   }
   
-  // DOM 로드 후 초기화
+  // DOM 로드 후 초기화 (module script는 defer라 DOMContentLoaded 전에 실행됨)
   document.addEventListener('DOMContentLoaded', initTOC);
-  
-  // Astro View Transitions 지원
-  document.addEventListener('astro:page-load', initTOC);
 </script>

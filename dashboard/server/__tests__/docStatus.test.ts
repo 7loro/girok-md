@@ -1,0 +1,59 @@
+import { describe, it, expect } from 'vitest';
+import { deriveStatus, type StatusInput } from '../services/docStatus.ts';
+
+function makeInput(overrides: Partial<StatusInput> = {}): StatusInput {
+  return {
+    publishable: true,
+    inOutput: true,
+    upToDate: true,
+    builtAt: undefined,
+    lastSyncAt: undefined,
+    ...overrides,
+  };
+}
+
+describe('deriveStatus', () => {
+  it('should be draft when not publishable', () => {
+    expect(deriveStatus(makeInput({ publishable: false, inOutput: false }))).toBe('draft');
+  });
+
+  it('should be orphaned when not publishable but still in output', () => {
+    expect(deriveStatus(makeInput({ publishable: false, inOutput: true }))).toBe('orphaned');
+  });
+
+  it('should be new when publishable but not yet in output', () => {
+    expect(deriveStatus(makeInput({ inOutput: false, upToDate: false }))).toBe('new');
+  });
+
+  it('should be modified when synced copy is stale', () => {
+    expect(deriveStatus(makeInput({ upToDate: false }))).toBe('modified');
+  });
+
+  it('should be synced when up to date but never built', () => {
+    expect(deriveStatus(makeInput())).toBe('synced');
+  });
+
+  it('should be synced when build predates the last sync', () => {
+    const input = makeInput({
+      builtAt: new Date('2026-07-01T00:00:00'),
+      lastSyncAt: new Date('2026-07-02T00:00:00'),
+    });
+    expect(deriveStatus(input)).toBe('synced');
+  });
+
+  it('should be built when build is at or after the last sync', () => {
+    const input = makeInput({
+      builtAt: new Date('2026-07-03T00:00:00'),
+      lastSyncAt: new Date('2026-07-02T00:00:00'),
+    });
+    expect(deriveStatus(input)).toBe('built');
+  });
+
+  it('should be built when build time exactly equals the last sync time', () => {
+    const input = makeInput({
+      builtAt: new Date('2026-07-02T00:00:00'),
+      lastSyncAt: new Date('2026-07-02T00:00:00'),
+    });
+    expect(deriveStatus(input)).toBe('built');
+  });
+});

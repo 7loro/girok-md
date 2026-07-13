@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { getPostsForLocale, getPostUrl } from '../utils/i18nRouting';
 import { excerpt, withTrailingSlash } from '../utils/seo';
+import { getBaseUrl } from '../utils/base';
 
 // Escape the five XML predefined entities for safe inclusion in the feed.
 const escapeXml = (str: string): string => {
@@ -22,8 +23,7 @@ export const GET: APIRoute = async ({ site }) => {
   const language = import.meta.env.LOCALE || 'en';
   const channelDescription = intro.description ? String(intro.description).replace(/\n/g, ' ').trim() : blogName;
 
-  const base = import.meta.env.BASE_URL;
-  const baseUrl = base.endsWith('/') ? base : `${base}/`;
+  const baseUrl = getBaseUrl();
   const toAbsolute = (path: string): string => (site ? new URL(path, site).href : path);
 
   const allPosts = await getCollection('posts');

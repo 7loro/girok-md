@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+:root {
+  --paper: #f4f1e8;
+  --panel: #ffffff;
+  --ink: #141414;
+  --muted: #6b6b6b;
+  --accent: #ff5f1f;
+  --ok: #16a34a;
+  --warn: #ca8a04;
+  --err: #dc2626;
+  --mod: #7c3aed;
+  --shadow: #141414;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #17161a;
+    --panel: #201f24;
+    --ink: #f0ede6;
+    --muted: #a09d96;
+    --shadow: #000000;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-err: var(--err);
+  --color-mod: var(--mod);
+}
+
+@layer components {
+  .brutal {
+    border: 3px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--shadow);
+    background: var(--panel);
+  }
+  .brutal-btn {
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--shadow);
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: transform 0.05s ease, box-shadow 0.05s ease;
+  }
+  .brutal-btn:hover:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .brutal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .brutal-btn-ghost {
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--shadow);
+    background: var(--panel);
+    color: var(--ink);
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  .brutal-input {
+    border: 3px solid var(--ink);
+    background: var(--panel);
+    color: var(--ink);
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    width: 100%;
+  }
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}

@@ -8,8 +8,31 @@ import matter from 'gray-matter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const settingPath = join(__dirname, 'setting.toml');
-const settingContent = readFileSync(settingPath, 'utf-8');
-const settings = parse(settingContent);
+
+// Fail fast with an actionable message instead of a raw stack trace
+// when setting.toml is missing or malformed.
+let settings;
+try {
+  settings = parse(readFileSync(settingPath, 'utf-8'));
+} catch (error) {
+  console.error('❌ Failed to load setting.toml.');
+  console.error(`   ${error instanceof Error ? error.message : String(error)}`);
+  console.error('   Check that setting.toml exists at the project root and is valid TOML.');
+  process.exit(1);
+}
+
+const SUPPORTED_LOCALES = ['en', 'ko'];
+let locale = settings.locale || 'en';
+if (!SUPPORTED_LOCALES.includes(locale)) {
+  console.warn(`⚠️  Warning: unsupported locale "${locale}" in setting.toml.`);
+  console.warn(`   Supported locales: ${SUPPORTED_LOCALES.join(', ')}. Falling back to "en".`);
+  locale = 'en';
+}
+
+if (!settings.blog_name) {
+  console.warn('⚠️  Warning: blog_name is not configured in setting.toml.');
+  console.warn('   The site title will be empty. (e.g., blog_name = "My Blog")');
+}
 
 // Build slug → date mapping table from post markdown files
 const postsDir = join(__dirname, 'src/content/posts');
@@ -72,7 +95,7 @@ export default defineConfig({
   vite: {
     define: {
       'import.meta.env.BLOG_NAME': JSON.stringify(settings.blog_name),
-      'import.meta.env.LOCALE': JSON.stringify(settings.locale || 'en'),
+      'import.meta.env.LOCALE': JSON.stringify(locale),
       'import.meta.env.INTRO': JSON.stringify(settings.intro || {}),
       'import.meta.env.COMMENTS': JSON.stringify(settings.comments || { enabled: false }),
       'import.meta.env.ANALYTICS': JSON.stringify(settings.analytics || { enabled: false }),

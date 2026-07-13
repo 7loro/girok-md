@@ -3,6 +3,14 @@ import { ko } from './translations/ko';
 
 export type Locale = 'en' | 'ko';
 
+// Supported locales, single source of truth for locale-aware routing/markup.
+export const locales: readonly Locale[] = ['en', 'ko'];
+
+// Type guard: narrow an arbitrary string to a supported Locale.
+export function isLocale(value: string | null | undefined): value is Locale {
+  return value != null && (locales as readonly string[]).includes(value);
+}
+
 const translations: Record<Locale, Record<TranslationKey, string>> = {
   en,
   ko,

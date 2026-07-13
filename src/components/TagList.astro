@@ -1,5 +1,6 @@
 ---
 import { getTagStyle } from '../utils/tagColor';
+import { getBaseUrl } from '../utils/base';
 
 interface Props {
   tags: string[];
@@ -9,8 +10,7 @@ interface Props {
 
 const { tags, showCount = false, tagCounts = {} } = Astro.props;
 
-const base = import.meta.env.BASE_URL;
-const baseUrl = base.endsWith('/') ? base : `${base}/`;
+const baseUrl = getBaseUrl();
 ---
 
 <div class="tag-list">

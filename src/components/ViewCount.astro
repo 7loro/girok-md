@@ -1,24 +1,13 @@
 ---
 import { t } from '../i18n';
 
-interface GoatCounterConfig {
-  site_code: string;
-  show_view_count: boolean;
-}
-
-interface AnalyticsConfig {
-  enabled: boolean;
-  provider: string;
-  goatcounter?: GoatCounterConfig;
-}
-
 interface Props {
   path: string;
 }
 
 const { path } = Astro.props;
 
-const analytics = import.meta.env.ANALYTICS as AnalyticsConfig;
+const analytics = import.meta.env.ANALYTICS;
 const isEnabled = analytics?.enabled && analytics?.provider === 'goatcounter';
 const goatcounter = analytics?.goatcounter;
 const showViewCount = isEnabled && goatcounter?.site_code && goatcounter?.show_view_count;
@@ -79,7 +68,6 @@ const siteCode = goatcounter?.site_code || '';
   }
 
   initViewCounters();
-  document.addEventListener('astro:page-load', initViewCounters);
 </script>
 
 <style>

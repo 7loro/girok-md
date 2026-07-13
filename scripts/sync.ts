@@ -13,6 +13,7 @@ import {
 import { basename, extname, join, resolve, dirname } from 'path';
 import matter from 'gray-matter';
 import { detectLanguage } from './translate.ts';
+import { formatYamlString } from './yamlUtils.ts';
 
 // Configuration file path
 const settingPath = resolve(import.meta.dirname, '..', 'setting.toml');
@@ -98,7 +99,10 @@ export function parseDocument(filePath: string): ParsedDocument | null {
     }
     
     return { slug, title, date, modified, content, frontmatter: data, filePath };
-  } catch {
+  } catch (error) {
+    // Surface the reason so silently skipped documents are debuggable.
+    const detail = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️  Skipping unreadable document ${filePath}: ${detail}`);
     return null;
   }
 }
@@ -160,6 +164,11 @@ export function checkShouldSync(doc: ParsedDocument, outputDir: string): SyncChe
         parseInt(parts[4]),
         parseInt(parts[5])
       );
+      // A malformed timestamp (e.g. date-only) yields an Invalid Date whose NaN
+      // comparison would silently skip the document forever; re-sync instead.
+      if (isNaN(lastSyncTime.getTime())) {
+        return { shouldSync: true, reason: 'invalid sync timestamp format' };
+      }
     } else {
       return { shouldSync: true, reason: 'invalid sync timestamp format' };
     }
@@ -322,6 +331,7 @@ export function transformImagePaths(content: string, slug: string): string {
 export interface ImageResult {
   content: string;
   warnings: string[];
+  images: ImageReference[];
 }
 
 export function processImages(
@@ -340,8 +350,8 @@ export function processImages(
   }
   
   const transformed = transformImagePaths(content, doc.slug);
-  
-  return { content: transformed, warnings };
+
+  return { content: transformed, warnings, images };
 }
 
 export function extractSummaryFromCallout(content: string): string | null {
@@ -465,27 +475,30 @@ export function processDocument(
   doc: ParsedDocument,
   publishedIndex: Map<string, ParsedDocument>,
   sourcePath?: string,
-): { document: PublishableDocument; warnings: string[] } {
+): { document: PublishableDocument; warnings: string[]; images: ImageReference[] } {
   const { content: protectedContent, blocks } = protectCodeBlocks(doc.content);
   let processedContent = protectedContent;
   const allWarnings: string[] = [];
-  
+  let images: ImageReference[] = [];
+
   const wikilinkResult = processWikilinks(processedContent, publishedIndex, doc);
   processedContent = wikilinkResult.content;
   allWarnings.push(...wikilinkResult.warnings);
-  
+
   if (sourcePath) {
     const imageResult = processImages(processedContent, doc, sourcePath);
     processedContent = imageResult.content;
     allWarnings.push(...imageResult.warnings);
+    images = imageResult.images;
   }
-  
+
   processedContent = processCallouts(processedContent);
   processedContent = restoreCodeBlocks(processedContent, blocks);
-  
+
   return {
     document: { ...doc, processedContent },
     warnings: allWarnings,
+    images,
   };
 }
 
@@ -511,23 +524,23 @@ export function generateFrontmatter(doc: PublishableDocument, settings?: Setting
   const publishSyncAt = formatLocalDateTime(new Date());
   const lang = detectLanguage(doc.content);
   
-  let yaml = `title: ${doc.title}\ndate: ${dateStr}\npublish: true\npublish_sync_at: "${publishSyncAt}"\nlang: ${lang}`;
-  
+  let yaml = `title: ${formatYamlString(doc.title)}\ndate: ${dateStr}\npublish: true\npublish_sync_at: "${publishSyncAt}"\nlang: ${lang}`;
+
   if (doc.frontmatter.tags) {
     const rawTags = doc.frontmatter.tags as string[];
     const tags = filterExcludedTags(rawTags, settings?.posts?.exclude_tags);
     if (tags.length > 0) {
-      yaml += '\ntags:\n' + tags.map(t => `  - ${t}`).join('\n');
+      yaml += '\ntags:\n' + tags.map(t => `  - ${formatYamlString(t)}`).join('\n');
     }
   }
   const summary = doc.frontmatter.summary as string | undefined
     ?? extractSummaryFromCallout(doc.content);
   if (summary) {
-    yaml += `\nsummary: "${summary.replace(/"/g, '\\"')}"`;
+    yaml += `\nsummary: ${formatYamlString(summary, { forceQuote: true })}`;
   }
   if (doc.frontmatter.aliases) {
     const aliases = doc.frontmatter.aliases as string[];
-    yaml += '\naliases:\n' + aliases.map(a => `  - ${a}`).join('\n');
+    yaml += '\naliases:\n' + aliases.map(a => `  - ${formatYamlString(a)}`).join('\n');
   }
   
   return `---\n${yaml}\n---`;
@@ -546,6 +559,16 @@ export interface SyncResult {
   removed: string[];
   warnings: string[];
   cleanup: CleanupResult;
+}
+
+// Decide whether an existing output file is an orphan to remove. Translation files
+// (`slug_<lang>.md`, produced by the translate step) are not present in the source
+// vault, so they must be kept as long as their base post is still published.
+export function isOrphanedOutput(fileSlug: string, publishedSlugs: Set<string>, targetLangs: string[]): boolean {
+  if (publishedSlugs.has(fileSlug)) return false;
+  const match = /^(.+)_([a-z]{2})$/.exec(fileSlug);
+  if (match && targetLangs.includes(match[2]) && publishedSlugs.has(match[1])) return false;
+  return true;
 }
 
 export async function syncSource(sourcePath: string, outputDir: string, settings?: Settings): Promise<SyncResult> {
@@ -580,11 +603,12 @@ export async function syncSource(sourcePath: string, outputDir: string, settings
   const skipped = publishable.filter(doc => !syncResults.get(doc.slug)!.shouldSync);
   
   const publishedSlugs = new Set(publishable.map(d => d.slug));
+  const targetLangs = settings?.posts?.translate?.target_langs ?? [];
   const existingFiles = readdirSync(outputDir).filter(f => f.endsWith('.md'));
   const removed: string[] = [];
   for (const file of existingFiles) {
     const slug = basename(file, '.md');
-    if (!publishedSlugs.has(slug)) {
+    if (isOrphanedOutput(slug, publishedSlugs, targetLangs)) {
       rmSync(join(outputDir, file));
       removed.push(slug);
     }
@@ -594,22 +618,27 @@ export async function syncSource(sourcePath: string, outputDir: string, settings
   const allWarnings: string[] = [];
   
   for (const doc of toSync) {
-    const { document, warnings } = processDocument(doc, publishedIndex, sourcePath);
+    // processDocument already extracted the image references; reuse them here.
+    const { document, warnings, images } = processDocument(doc, publishedIndex, sourcePath);
     saveDocument(document, outputDir, settings);
     allWarnings.push(...warnings);
-    
-    const { content: protectedContent } = protectCodeBlocks(doc.content);
-    const images = findImageReferences(protectedContent);
+
     const docAssetDir = join(assetOutputDir, doc.slug);
     if (images.length > 0 && !existsSync(docAssetDir)) {
       mkdirSync(docAssetDir, { recursive: true });
     }
-    
+
     for (const image of images) {
       const srcPath = findImageFile(image.filename, doc.filePath, sourcePath);
       if (srcPath) {
-        const destPath = join(docAssetDir, image.filename);
-        copyFileSync(srcPath, destPath);
+        try {
+          copyFileSync(srcPath, join(docAssetDir, image.filename));
+        } catch (error) {
+          // One broken image (permissions, dangling symlink, directory collision)
+          // must not abort the whole sync run.
+          const detail = error instanceof Error ? error.message : String(error);
+          allWarnings.push(`[${doc.title}] Failed to copy image "${image.filename}": ${detail}`);
+        }
       }
     }
   }
@@ -723,21 +752,38 @@ export function saveRobotsTxt(siteUrl: string, projectRoot: string): void {
   writeFileSync(robotsPath, robotsContent, 'utf-8');
 }
 
+export interface CliArgs {
+  source?: string;
+}
+
+export function parseCliArgs(argv: string[]): CliArgs {
+  const args: CliArgs = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--source' && argv[i + 1]) {
+      args.source = argv[i + 1];
+      i++;
+    }
+  }
+  return args;
+}
+
 async function main() {
   let settings: Settings;
   try {
     settings = loadSettings();
   } catch (error) {
     console.error('❌ Failed to read setting.toml file.');
+    console.error(`   ${error instanceof Error ? error.message : String(error)}`);
     console.error('   Please check that the file exists and is properly formatted.');
     process.exit(1);
   }
 
-  const sourcePath = settings.source_root_path;
+  const cliArgs = parseCliArgs(process.argv.slice(2));
+  const sourcePath = cliArgs.source ?? settings.source_root_path;
 
   if (!sourcePath) {
     console.error('❌ source_root_path is not configured.');
-    console.error('   Please check your setting.toml file.');
+    console.error('   Please check your setting.toml file or pass --source <path>.');
     process.exit(1);
   }
   

@@ -1,19 +1,17 @@
 /// <reference types="astro/client" />
 
-interface IntroConfig {
-  name?: string;
-  role?: string;
-  greeting?: string;
-  description?: string;
-  intro_tags?: string[];
-}
+import type { IntroConfig, CommentsConfig, AnalyticsConfig } from './types/settings';
 
-interface ImportMetaEnv {
-  readonly BLOG_NAME: string;
-  readonly LOCALE: 'en' | 'ko';
-  readonly INTRO: IntroConfig;
-}
+declare global {
+  interface ImportMetaEnv {
+    readonly BLOG_NAME: string;
+    readonly LOCALE: 'en' | 'ko';
+    readonly INTRO: IntroConfig;
+    readonly COMMENTS: CommentsConfig;
+    readonly ANALYTICS: AnalyticsConfig;
+  }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }

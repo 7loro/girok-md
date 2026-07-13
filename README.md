@@ -146,6 +146,21 @@ Write your content here.
 | `npm run sync` | Sync from markdown folder |
 | `npm test` | Run tests |
 
+## Web Dashboard
+
+A local-only admin dashboard for managing your blog pipeline.
+
+```bash
+cp .env.example .env   # set DASHBOARD_PASSWORD
+npm run dashboard      # build UI + start server at http://127.0.0.1:4322
+```
+
+Features: document pipeline status (draft → pending → synced → built), publish flag toggle,
+running sync/translate/build/preview with live logs (with an optional source folder override),
+one-click git deploy, and setting.toml editing.
+
+For dashboard development: `npm run dashboard:server` + `npm run dashboard:dev` (HMR at :4323).
+
 ## Deployment
 
 ### GitHub Pages
@@ -179,7 +194,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies

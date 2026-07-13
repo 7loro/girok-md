@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import matter from 'gray-matter';
 import {
   generateSlug,
+  isOrphanedOutput,
+  syncSource,
+  checkShouldSync,
   isPublishable,
   filterPublishable,
   extractDate,
@@ -18,6 +25,7 @@ import {
   cleanupUnusedImages,
   formatLocalDateTime,
   generateRobotsTxt,
+  parseCliArgs,
   type ParsedDocument,
   type PublishableDocument,
   type Settings,
@@ -907,5 +915,188 @@ describe('transformImagePaths - additional cases', () => {
     const content = 'text![[img.png]]text';
     const result = transformImagePaths(content, 'slug');
     expect(result).toContain('\n\n');
+  });
+});
+
+describe('parseCliArgs', () => {
+  it('should return empty object when no args', () => {
+    expect(parseCliArgs([])).toEqual({});
+  });
+
+  it('should parse --source with a path', () => {
+    expect(parseCliArgs(['--source', '/my/vault'])).toEqual({ source: '/my/vault' });
+  });
+
+  it('should ignore --source without a value', () => {
+    expect(parseCliArgs(['--source'])).toEqual({});
+  });
+
+  it('should ignore unknown args', () => {
+    expect(parseCliArgs(['--verbose', '--source', '/v'])).toEqual({ source: '/v' });
+  });
+});
+
+describe('isOrphanedOutput', () => {
+  const published = new Set(['my-post', 'other']);
+
+  it('should keep files whose slug is still published', () => {
+    expect(isOrphanedOutput('my-post', published, ['en', 'ko'])).toBe(false);
+  });
+
+  it('should keep translations whose base slug is still published', () => {
+    expect(isOrphanedOutput('my-post_ko', published, ['en', 'ko'])).toBe(false);
+    expect(isOrphanedOutput('my-post_en', published, ['en', 'ko'])).toBe(false);
+  });
+
+  it('should remove translations whose base slug was unpublished', () => {
+    expect(isOrphanedOutput('gone-post_ko', published, ['en', 'ko'])).toBe(true);
+  });
+
+  it('should remove plain orphans', () => {
+    expect(isOrphanedOutput('gone-post', published, ['en', 'ko'])).toBe(true);
+  });
+
+  it('should not treat a non-target-lang suffix as a translation', () => {
+    // "my-post_db" is not a translation for target langs [en, ko]
+    expect(isOrphanedOutput('my-post_db', published, ['en', 'ko'])).toBe(true);
+  });
+});
+
+describe('syncSource integration', () => {
+  function setupVault(): { sourcePath: string; outputDir: string; settings: Settings } {
+    const root = mkdtempSync(join(tmpdir(), 'girok-sync-'));
+    const sourcePath = join(root, 'vault');
+    // outputDir mirrors the real layout so the derived public/assets lands inside root.
+    const outputDir = join(root, 'project', 'src', 'content', 'posts');
+    mkdirSync(sourcePath, { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
+    const settings: Settings = {
+      source_root_path: sourcePath,
+      blog_name: 'Test',
+      posts: { translate: { enabled: true, target_langs: ['en', 'ko'] } },
+    };
+    return { sourcePath, outputDir, settings };
+  }
+
+  it('should preserve translation files for published posts across re-syncs', async () => {
+    const { sourcePath, outputDir, settings } = setupVault();
+    writeFileSync(join(sourcePath, 'my-post.md'), '---\npublish: true\ntitle: my-post\n---\nbody\n', 'utf-8');
+
+    await syncSource(sourcePath, outputDir, settings);
+    expect(existsSync(join(outputDir, 'my-post.md'))).toBe(true);
+
+    // A translation created by the translate step.
+    writeFileSync(join(outputDir, 'my-post_ko.md'), '---\ntitle: t\nlang: ko\n---\nbody-ko\n', 'utf-8');
+
+    const second = await syncSource(sourcePath, outputDir, settings);
+    expect(existsSync(join(outputDir, 'my-post_ko.md'))).toBe(true);
+    expect(second.removed).not.toContain('my-post_ko');
+  });
+
+  it('should remove translations when the source post is unpublished', async () => {
+    const { sourcePath, outputDir, settings } = setupVault();
+    const srcFile = join(sourcePath, 'my-post.md');
+    writeFileSync(srcFile, '---\npublish: true\ntitle: my-post\n---\nbody\n', 'utf-8');
+    await syncSource(sourcePath, outputDir, settings);
+    writeFileSync(join(outputDir, 'my-post_ko.md'), '---\ntitle: t\nlang: ko\n---\nbody-ko\n', 'utf-8');
+
+    writeFileSync(srcFile, '---\npublish: false\ntitle: my-post\n---\nbody\n', 'utf-8');
+    const result = await syncSource(sourcePath, outputDir, settings);
+
+    expect(existsSync(join(outputDir, 'my-post.md'))).toBe(false);
+    expect(existsSync(join(outputDir, 'my-post_ko.md'))).toBe(false);
+    expect(result.removed).toEqual(expect.arrayContaining(['my-post', 'my-post_ko']));
+  });
+});
+
+describe('generateFrontmatter - YAML safety', () => {
+  function parseBack(doc: PublishableDocument): Record<string, unknown> {
+    const fm = generateFrontmatter(doc);
+    return matter(`${fm}\n\nbody\n`).data;
+  }
+
+  function mockPublishable(overrides: Partial<PublishableDocument> = {}): PublishableDocument {
+    return { ...createMockDoc(), processedContent: 'body', ...overrides };
+  }
+
+  it('should keep a title containing a colon intact', () => {
+    const doc = mockPublishable({ title: 'Guide: Getting Started' });
+    expect(parseBack(doc).title).toBe('Guide: Getting Started');
+  });
+
+  it('should keep a title containing a hash intact', () => {
+    const doc = mockPublishable({ title: 'Tips #1' });
+    expect(parseBack(doc).title).toBe('Tips #1');
+  });
+
+  it('should keep tags with special characters as strings', () => {
+    const doc = mockPublishable({
+      frontmatter: { publish: true, tags: ['a: b', 'c#d'] },
+    });
+    expect(parseBack(doc).tags).toEqual(['a: b', 'c#d']);
+  });
+
+  it('should keep aliases with special characters as strings', () => {
+    const doc = mockPublishable({
+      frontmatter: { publish: true, aliases: ['Alias: One'] },
+    });
+    expect(parseBack(doc).aliases).toEqual(['Alias: One']);
+  });
+});
+
+describe('checkShouldSync timestamp parsing', () => {
+  function writeExisting(publishSyncAt: string): { outputDir: string } {
+    const outputDir = mkdtempSync(join(tmpdir(), 'girok-check-'));
+    writeFileSync(
+      join(outputDir, 'test-doc.md'),
+      `---\ntitle: t\npublish: true\npublish_sync_at: "${publishSyncAt}"\n---\nbody\n`,
+      'utf-8',
+    );
+    return { outputDir };
+  }
+
+  it('should re-sync when the stored timestamp is unparsable', () => {
+    const { outputDir } = writeExisting('2024-01-15'); // date-only, missing time fields
+    const doc = createMockDoc({ modified: new Date('2020-01-01T00:00:00') });
+    const result = checkShouldSync(doc, outputDir);
+    expect(result.shouldSync).toBe(true);
+  });
+
+  it('should skip when the doc was not modified since the last sync', () => {
+    const { outputDir } = writeExisting('2024-06-01 10:00:00');
+    const doc = createMockDoc({ modified: new Date('2024-05-01T00:00:00') });
+    expect(checkShouldSync(doc, outputDir).shouldSync).toBe(false);
+  });
+
+  it('should re-sync when the doc was modified after the last sync', () => {
+    const { outputDir } = writeExisting('2024-06-01 10:00:00');
+    const doc = createMockDoc({ modified: new Date('2024-07-01T00:00:00') });
+    expect(checkShouldSync(doc, outputDir).shouldSync).toBe(true);
+  });
+});
+
+describe('syncSource image copy isolation', () => {
+  it('should copy good images and continue when one image fails to copy', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'girok-imgfail-'));
+    const sourcePath = join(root, 'vault');
+    const outputDir = join(root, 'project', 'src', 'content', 'posts');
+    mkdirSync(join(sourcePath, 'attachments'), { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(
+      join(sourcePath, 'pic-post.md'),
+      '---\npublish: true\ntitle: pic-post\n---\n![[good.png]]\n![[bad.png]]\n',
+      'utf-8',
+    );
+    writeFileSync(join(sourcePath, 'attachments', 'good.png'), 'png-bytes', 'utf-8');
+    // A directory with the image's name makes copyFileSync fail (EISDIR).
+    mkdirSync(join(sourcePath, 'attachments', 'bad.png'), { recursive: true });
+
+    const settings: Settings = { source_root_path: sourcePath, blog_name: 'Test' };
+    const result = await syncSource(sourcePath, outputDir, settings);
+
+    const assetDir = join(root, 'project', 'public', 'assets', 'pic-post');
+    expect(existsSync(join(assetDir, 'good.png'))).toBe(true);
+    expect(result.synced).toHaveLength(1);
+    expect(result.warnings.some((w) => w.includes('bad.png'))).toBe(true);
   });
 });
