@@ -152,6 +152,8 @@ Write your content here.
 | `npm run dashboard` | Build and run the web dashboard (127.0.0.1:4322) |
 | `npm test` | Run tests |
 
+If you use [just](https://github.com/casey/just), the same tasks are available as recipes — run `just` to list them.
+
 ## Web Dashboard
 
 A local-only admin dashboard for managing your blog pipeline.
