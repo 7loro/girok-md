@@ -31,12 +31,13 @@ panel on the Documents page (user-confirmed over modal / separate page).
 
 ## Web UI
 
-- Documents side panel gains a Preview button. The panel expands from `w-80`
-  to roughly twice the table's width and renders the returned HTML
-  (read-only, `dangerouslySetInnerHTML` — content is same-origin, raw HTML
-  already stripped server-side).
-- Close returns to the normal detail panel; selecting another doc while open
-  loads that doc's preview.
+- Selecting a row opens one wide side panel (~2× the table width) that shows
+  status badge, publish toggle, metadata, warnings, and the rendered HTML
+  below a divider (read-only, `dangerouslySetInnerHTML` — content is
+  same-origin, raw HTML already stripped server-side). The preview loads
+  immediately on selection; no separate Preview button (user-revised
+  2026-07-13, superseding the original button-triggered design).
+- Close deselects; selecting another doc loads that doc's preview.
 - `theme.css` gains `.preview-body` typography (headings, code, blockquote,
   `img { max-width: 100% }`).
 

@@ -11,13 +11,12 @@ export default function Documents(): JSX.Element {
   const [selected, setSelected] = useState<DocEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [preview, setPreview] = useState<DocPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const selectedSlug = selected?.slug ?? null;
   useEffect(() => {
-    if (!previewOpen || selectedSlug === null) return;
+    if (selectedSlug === null) return;
     let cancelled = false;
     setPreview(null);
     setPreviewError(null);
@@ -32,7 +31,7 @@ export default function Documents(): JSX.Element {
     return (): void => {
       cancelled = true;
     };
-  }, [previewOpen, selectedSlug]);
+  }, [selectedSlug]);
 
   function load(): Promise<void> {
     return api
@@ -161,33 +160,33 @@ export default function Documents(): JSX.Element {
           </table>
         </div>
 
-        {selected && previewOpen && (
+        {selected && (
           <aside className="brutal p-4 w-[42rem] max-w-[60%] shrink-0 space-y-3">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-black break-all">{preview?.title ?? selected.title}</h3>
+              <h3 className="font-black break-all">{selected.title}</h3>
               <button
                 className="brutal-btn-ghost text-xs px-2 py-1 shrink-0"
-                onClick={(): void => setPreviewOpen(false)}
+                onClick={(): void => setSelected(null)}
               >
                 Close
               </button>
             </div>
-            <StatusBadge status={selected.status} />
-            {previewError && <p className="text-err font-bold text-sm">{previewError}</p>}
-            {!preview && !previewError && <p className="text-sm text-muted">Loading preview…</p>}
-            {preview && (
-              <div
-                className="preview-body text-sm max-h-[70vh] overflow-y-auto pr-2"
-                dangerouslySetInnerHTML={{ __html: preview.html }}
-              />
-            )}
-          </aside>
-        )}
-
-        {selected && !previewOpen && (
-          <aside className="brutal p-4 w-80 shrink-0 space-y-3">
-            <h3 className="font-black break-all">{selected.title}</h3>
-            <StatusBadge status={selected.status} />
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={selected.status} />
+              {selected.sourcePath ? (
+                <button
+                  className="brutal-btn text-xs px-3 py-1"
+                  disabled={toggling}
+                  onClick={(): void => void togglePublish(selected)}
+                >
+                  {selected.publish ? 'Unpublish' : 'Publish'}
+                </button>
+              ) : (
+                <span className="text-xs text-muted">
+                  Source file is gone — this post will be removed on next sync.
+                </span>
+              )}
+            </div>
             <dl className="text-sm space-y-1">
               <div>
                 <dt className="font-bold inline">slug: </dt>
@@ -216,22 +215,16 @@ export default function Documents(): JSX.Element {
                 </ul>
               </div>
             )}
-            <button className="brutal-btn-ghost w-full" onClick={(): void => setPreviewOpen(true)}>
-              Preview
-            </button>
-            {selected.sourcePath ? (
-              <button
-                className="brutal-btn w-full"
-                disabled={toggling}
-                onClick={(): void => void togglePublish(selected)}
-              >
-                {selected.publish ? 'Unpublish' : 'Publish'}
-              </button>
-            ) : (
-              <p className="text-xs text-muted">
-                Source file is gone — this post will be removed on next sync.
-              </p>
-            )}
+            <div className="border-t-[3px] border-ink pt-3">
+              {previewError && <p className="text-err font-bold text-sm">{previewError}</p>}
+              {!preview && !previewError && <p className="text-sm text-muted">Loading preview…</p>}
+              {preview && (
+                <div
+                  className="preview-body text-sm max-h-[60vh] overflow-y-auto pr-2"
+                  dangerouslySetInnerHTML={{ __html: preview.html }}
+                />
+              )}
+            </div>
           </aside>
         )}
       </div>
