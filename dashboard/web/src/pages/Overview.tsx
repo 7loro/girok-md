@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type Overview as OverviewData, type DocStatus } from '../api';
 import StatusBadge from '../components/StatusBadge';
 
-const STATUS_ORDER: DocStatus[] = ['draft', 'pending', 'synced', 'built', 'orphaned'];
+const STATUS_ORDER: DocStatus[] = ['draft', 'new', 'modified', 'synced', 'built', 'orphaned'];
 
 function formatTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString() : '—';

@@ -21,12 +21,12 @@ describe('deriveStatus', () => {
     expect(deriveStatus(makeInput({ publishable: false, inOutput: true }))).toBe('orphaned');
   });
 
-  it('should be pending when publishable but not yet in output', () => {
-    expect(deriveStatus(makeInput({ inOutput: false, upToDate: false }))).toBe('pending');
+  it('should be new when publishable but not yet in output', () => {
+    expect(deriveStatus(makeInput({ inOutput: false, upToDate: false }))).toBe('new');
   });
 
-  it('should be pending when synced copy is stale', () => {
-    expect(deriveStatus(makeInput({ upToDate: false }))).toBe('pending');
+  it('should be modified when synced copy is stale', () => {
+    expect(deriveStatus(makeInput({ upToDate: false }))).toBe('modified');
   });
 
   it('should be synced when up to date but never built', () => {

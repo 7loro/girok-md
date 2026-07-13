@@ -11,7 +11,7 @@ import {
   type ParsedDocument,
 } from '../../../scripts/sync.ts';
 
-export type DocStatus = 'draft' | 'pending' | 'synced' | 'built' | 'orphaned';
+export type DocStatus = 'draft' | 'new' | 'modified' | 'synced' | 'built' | 'orphaned';
 
 export interface StatusInput {
   publishable: boolean;
@@ -23,7 +23,8 @@ export interface StatusInput {
 
 export function deriveStatus(input: StatusInput): DocStatus {
   if (!input.publishable) return input.inOutput ? 'orphaned' : 'draft';
-  if (!input.inOutput || !input.upToDate) return 'pending';
+  if (!input.inOutput) return 'new';
+  if (!input.upToDate) return 'modified';
   if (input.builtAt && input.lastSyncAt && input.builtAt.getTime() >= input.lastSyncAt.getTime()) {
     return 'built';
   }

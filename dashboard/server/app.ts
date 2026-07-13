@@ -142,7 +142,7 @@ export function createApp(deps: AppDeps): Hono {
     } catch (error) {
       return c.json({ error: 'failed to load settings or scan documents', detail: String(error) }, 500);
     }
-    const counts: Record<DocStatus, number> = { draft: 0, pending: 0, synced: 0, built: 0, orphaned: 0 };
+    const counts: Record<DocStatus, number> = { draft: 0, new: 0, modified: 0, synced: 0, built: 0, orphaned: 0 };
     for (const doc of docs) counts[doc.status] += 1;
     const jobs = deps.jobs.list();
     const lastOf = (type: JobType): string | null =>

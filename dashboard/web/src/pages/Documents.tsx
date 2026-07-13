@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type DocEntry, type DocStatus } from '../api';
 import StatusBadge from '../components/StatusBadge';
 
-const FILTERS: Array<DocStatus | 'all'> = ['all', 'draft', 'pending', 'synced', 'built', 'orphaned'];
+const FILTERS: Array<DocStatus | 'all'> = ['all', 'draft', 'new', 'modified', 'synced', 'built', 'orphaned'];
 
 export default function Documents(): JSX.Element {
   const [docs, setDocs] = useState<DocEntry[]>([]);
@@ -24,6 +24,12 @@ export default function Documents(): JSX.Element {
   }
 
   useEffect(() => { void load(); }, []);
+
+  const countOf = useMemo(() => {
+    const counts = new Map<DocStatus | 'all', number>([['all', docs.length]]);
+    for (const d of docs) counts.set(d.status, (counts.get(d.status) ?? 0) + 1);
+    return (f: DocStatus | 'all'): number => counts.get(f) ?? 0;
+  }, [docs]);
 
   const visible = useMemo(() => {
     const q = query.toLowerCase();
@@ -66,7 +72,7 @@ export default function Documents(): JSX.Element {
               filter === f ? 'bg-ink text-paper' : ''
             }`}
           >
-            {f}
+            {f} ({countOf(f)})
           </button>
         ))}
         <input

@@ -1,4 +1,4 @@
-export type DocStatus = 'draft' | 'pending' | 'synced' | 'built' | 'orphaned';
+export type DocStatus = 'draft' | 'new' | 'modified' | 'synced' | 'built' | 'orphaned';
 
 export interface DocEntry {
   slug: string;

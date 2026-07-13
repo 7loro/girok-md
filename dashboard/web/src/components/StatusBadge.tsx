@@ -2,7 +2,8 @@ import type { DocStatus } from '../api';
 
 const STYLES: Record<DocStatus, string> = {
   draft: 'bg-panel text-muted',
-  pending: 'bg-warn text-white',
+  new: 'bg-warn text-white',
+  modified: 'bg-mod text-white',
   synced: 'bg-ok text-white',
   built: 'bg-accent text-white',
   orphaned: 'bg-err text-white',
