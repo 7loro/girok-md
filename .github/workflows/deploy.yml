@@ -1,0 +1,122 @@
+name: Deploy to GitHub Pages
+
+# Template for blog instance repos (copies of girok-md, e.g. 7loro.github.io).
+# Guarded so it never runs in the girok-md dev repo itself — girok-md's Pages
+# hosts the documentation site from the `docs` branch.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository != '7loro/girok-md'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify:
+    # Separate job (not a step in deploy) so a build failure still notifies.
+    needs: [build, deploy]
+    if: always() && github.repository != '7loro/girok-md'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        # Webhook URLs are bound to a channel: to change the target channel,
+        # create a new webhook there and replace the DISCORD_WEBHOOK_URL secret.
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          # Skip quietly when the webhook secret is not registered.
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL secret 미설정 — Discord 알림 skip"
+            exit 0
+          fi
+
+          if [ "$DEPLOY_RESULT" = "success" ]; then
+            title="✅ 블로그 배포 성공"
+            color=3066993
+          elif [ "$BUILD_RESULT" = "cancelled" ] || [ "$DEPLOY_RESULT" = "cancelled" ]; then
+            title="⚪ 블로그 배포 취소"
+            color=9807270
+          else
+            title="❌ 블로그 배포 실패"
+            color=15158332
+          fi
+
+          links="[Run]($RUN_URL)"
+          if [ -n "$PAGE_URL" ]; then
+            links="[사이트]($PAGE_URL) · $links"
+          fi
+
+          payload=$(jq -n \
+            --arg title "$title" \
+            --arg repo "$REPO" \
+            --arg commit "${COMMIT_SHA:0:7} ${COMMIT_MESSAGE:-manual run}" \
+            --arg author "${COMMIT_AUTHOR:-unknown}" \
+            --arg links "$links" \
+            --argjson color "$color" \
+            '{
+              embeds: [{
+                title: $title,
+                color: $color,
+                fields: [
+                  { name: "Repo", value: $repo, inline: true },
+                  { name: "Author", value: $author, inline: true },
+                  { name: "Commit", value: $commit, inline: false },
+                  { name: "Links", value: $links, inline: false }
+                ]
+              }]
+            }')
+
+          curl -fsS -H "Content-Type: application/json" \
+            -X POST -d "$payload" "$DISCORD_WEBHOOK_URL"
