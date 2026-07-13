@@ -39,6 +39,9 @@ const app = createApp({
 // and every npm script runs from the project root.
 const webDistAbs = join(projectRoot, 'dashboard', 'web', 'dist');
 app.use('/*', serveStatic({ root: 'dashboard/web/dist' }));
+// Blog images for doc previews. Registered after the SPA bundle so the SPA's
+// own /assets/* JS/CSS win; misses fall through to public/assets/<image>.
+app.use('/assets/*', serveStatic({ root: 'public' }));
 app.get('*', (c) => {
   const indexPath = join(webDistAbs, 'index.html');
   if (!existsSync(indexPath)) {

@@ -7,6 +7,7 @@ import { parse } from 'smol-toml';
 import { verifyPassword, type LoginGuard, type SessionStore } from './auth.ts';
 import { scanDocuments, type DocEntry, type DocStatus } from './services/docStatus.ts';
 import { setPublishFlag } from './services/publishToggle.ts';
+import { renderDocPreview } from './services/preview.ts';
 import { updateTomlContent, type TomlValue } from './services/settingsFile.ts';
 import { JobLockError, type JobManager, type JobType } from './services/jobs.ts';
 import { DeployLockError, type DeployService } from './services/deploy.ts';
@@ -95,6 +96,23 @@ export function createApp(deps: AppDeps): Hono {
       return c.json(getDocs());
     } catch (error) {
       return c.json({ error: 'failed to load settings or scan documents', detail: String(error) }, 500);
+    }
+  });
+
+  app.get('/api/docs/:slug/preview', async (c) => {
+    const slug = c.req.param('slug');
+    let sourceRoot: string;
+    try {
+      sourceRoot = resolve(loadSettings().source_root_path);
+    } catch (error) {
+      return c.json({ error: 'failed to load settings', detail: String(error) }, 500);
+    }
+    try {
+      const preview = await renderDocPreview(sourceRoot, postsDir, slug);
+      if (!preview) return c.json({ error: 'document not found' }, 404);
+      return c.json(preview);
+    } catch (error) {
+      return c.json({ error: 'failed to render preview', detail: String(error) }, 500);
     }
   });
 

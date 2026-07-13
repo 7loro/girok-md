@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DocEntry, type DocStatus } from '../api';
+import { api, type DocEntry, type DocPreview, type DocStatus } from '../api';
 import StatusBadge from '../components/StatusBadge';
 
 const FILTERS: Array<DocStatus | 'all'> = ['all', 'draft', 'new', 'modified', 'synced', 'built', 'orphaned'];
@@ -11,6 +11,28 @@ export default function Documents(): JSX.Element {
   const [selected, setSelected] = useState<DocEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<DocPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const selectedSlug = selected?.slug ?? null;
+  useEffect(() => {
+    if (!previewOpen || selectedSlug === null) return;
+    let cancelled = false;
+    setPreview(null);
+    setPreviewError(null);
+    api
+      .docPreview(selectedSlug)
+      .then((p) => {
+        if (!cancelled) setPreview(p);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setPreviewError(e.message);
+      });
+    return (): void => {
+      cancelled = true;
+    };
+  }, [previewOpen, selectedSlug]);
 
   function load(): Promise<void> {
     return api
@@ -139,7 +161,30 @@ export default function Documents(): JSX.Element {
           </table>
         </div>
 
-        {selected && (
+        {selected && previewOpen && (
+          <aside className="brutal p-4 w-[42rem] max-w-[60%] shrink-0 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-black break-all">{preview?.title ?? selected.title}</h3>
+              <button
+                className="brutal-btn-ghost text-xs px-2 py-1 shrink-0"
+                onClick={(): void => setPreviewOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <StatusBadge status={selected.status} />
+            {previewError && <p className="text-err font-bold text-sm">{previewError}</p>}
+            {!preview && !previewError && <p className="text-sm text-muted">Loading preview…</p>}
+            {preview && (
+              <div
+                className="preview-body text-sm max-h-[70vh] overflow-y-auto pr-2"
+                dangerouslySetInnerHTML={{ __html: preview.html }}
+              />
+            )}
+          </aside>
+        )}
+
+        {selected && !previewOpen && (
           <aside className="brutal p-4 w-80 shrink-0 space-y-3">
             <h3 className="font-black break-all">{selected.title}</h3>
             <StatusBadge status={selected.status} />
@@ -171,6 +216,9 @@ export default function Documents(): JSX.Element {
                 </ul>
               </div>
             )}
+            <button className="brutal-btn-ghost w-full" onClick={(): void => setPreviewOpen(true)}>
+              Preview
+            </button>
             {selected.sourcePath ? (
               <button
                 className="brutal-btn w-full"
