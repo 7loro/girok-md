@@ -376,3 +376,43 @@ describe('publish route validation', () => {
     expect(readFileSync(join(sourceRoot, 'post.md'), 'utf-8')).toContain('publish: true');
   });
 });
+
+describe('doc preview route', () => {
+  function makePreviewApp(): { app: ReturnType<typeof createApp>; sourceRoot: string } {
+    const base = mkdtempSync(join(tmpdir(), 'girok-preview-'));
+    const sourceRoot = join(base, 'vault');
+    const projectRoot = join(base, 'project');
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(projectRoot, { recursive: true });
+    writeFileSync(join(projectRoot, 'setting.toml'), `source_root_path = "${sourceRoot}"\n`, 'utf-8');
+    return { app: makeApp({ projectRoot }), sourceRoot };
+  }
+
+  it('should require auth', async () => {
+    const { app } = makePreviewApp();
+    const res = await app.request('/api/docs/some-doc/preview');
+    expect(res.status).toBe(401);
+  });
+
+  it('should return 404 for an unknown slug', async () => {
+    const { app } = makePreviewApp();
+    const cookie = await loginCookie(app);
+    const res = await app.request('/api/docs/nope/preview', { headers: { cookie } });
+    expect(res.status).toBe(404);
+  });
+
+  it('should render a vault document as HTML', async () => {
+    const { app, sourceRoot } = makePreviewApp();
+    writeFileSync(
+      join(sourceRoot, 'hello.md'),
+      '---\ntitle: Hello Post\npublish: true\n---\n# Hi\n\nbody\n',
+      'utf-8',
+    );
+    const cookie = await loginCookie(app);
+    const res = await app.request('/api/docs/hello-post/preview', { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { title: string; html: string };
+    expect(body.title).toBe('Hello Post');
+    expect(body.html).toContain('<h1>Hi</h1>');
+  });
+});
